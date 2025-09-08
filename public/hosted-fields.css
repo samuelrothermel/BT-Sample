@@ -1,0 +1,434 @@
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  color: #333;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 40px;
+  color: white;
+}
+
+header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  font-weight: 300;
+}
+
+header p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin-bottom: 15px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  color: white;
+  text-decoration: none;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.back-link:hover {
+  opacity: 1;
+}
+
+/* Payment form styles */
+.payment-form {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.payment-form h2 {
+  margin-bottom: 30px;
+  color: #333;
+  font-weight: 400;
+}
+
+/* Test cards info section */
+.test-cards-info {
+  margin-bottom: 25px;
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.test-cards-info details {
+  background: #f8f9fa;
+}
+
+.test-cards-info summary {
+  padding: 12px 16px;
+  cursor: pointer;
+  background: #f1f3f4;
+  border-bottom: 1px solid #e1e5e9;
+  font-weight: 500;
+  color: #495057;
+  user-select: none;
+}
+
+.test-cards-info summary:hover {
+  background: #e9ecef;
+}
+
+.test-cards-content {
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.test-cards-content ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.test-cards-content li {
+  margin-bottom: 5px;
+}
+
+.test-cards-content p {
+  margin: 10px 0;
+  color: #6c757d;
+}
+
+.form-group {
+  margin-bottom: 25px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+input[type='number'] {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+input[type='number']:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* Hosted Fields styles */
+.hosted-field {
+  height: 50px;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 6px;
+  background: white;
+  transition: border-color 0.3s ease;
+  display: flex;
+  align-items: center;
+}
+
+.hosted-field.braintree-hosted-fields-focused {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.hosted-field.braintree-hosted-fields-valid {
+  border-color: #28a745;
+}
+
+.hosted-field.braintree-hosted-fields-invalid {
+  border-color: #dc3545;
+}
+
+/* Submit button */
+#submit-button {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+#submit-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+#submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+#submit-button:active {
+  transform: translateY(0);
+}
+
+.loading-spinner {
+  display: none;
+}
+
+#submit-button.loading .button-text {
+  display: none;
+}
+
+#submit-button.loading .loading-spinner {
+  display: inline;
+}
+
+/* Payment divider */
+.payment-divider {
+  margin: 30px 0;
+  text-align: center;
+  position: relative;
+}
+
+.payment-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e1e5e9;
+}
+
+.payment-divider span {
+  background: white;
+  padding: 0 20px;
+  color: #666;
+  font-size: 14px;
+  position: relative;
+}
+
+/* Alternative payment methods */
+.alternative-payment-method {
+  margin-bottom: 15px;
+}
+
+.payment-button-container {
+  min-height: 50px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Venmo button specific styling */
+#venmo-button .venmo-button {
+  width: 100%;
+  height: 50px;
+  border: none;
+  border-radius: 6px;
+  background-color: #3d95ce;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+
+#venmo-button .venmo-button:hover:not(:disabled) {
+  background-color: #357abd;
+  transform: translateY(-1px);
+}
+
+#venmo-button .venmo-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#venmo-button .venmo-button:active {
+  transform: translateY(0);
+}
+
+/* Spinning animation for loading state */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Result styles */
+.result {
+  margin-top: 30px;
+  padding: 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  display: none;
+}
+
+.result.success {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+  display: block;
+}
+
+.result.error {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  display: block;
+}
+
+.result.info {
+  background-color: #d1ecf1;
+  border: 1px solid #bee5eb;
+  color: #0c5460;
+  display: block;
+}
+
+/* Pre-formatted code in results */
+.result pre {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 15px;
+  margin: 10px 0;
+  overflow-x: auto;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.result h4 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+
+  .payment-form {
+    padding: 25px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  header h1 {
+    font-size: 2rem;
+  }
+}
+
+/* Loading state for the entire form */
+.payment-form.loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* Venmo settings toggle styles */
+.venmo-settings {
+  margin-bottom: 15px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.toggle-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  gap: 12px;
+}
+
+.toggle-container input[type='checkbox'] {
+  display: none;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 50px;
+  height: 26px;
+  background-color: #ccc;
+  border-radius: 13px;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: white;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-container input[type='checkbox']:checked + .toggle-slider {
+  background-color: #3b82f6;
+}
+
+.toggle-container input[type='checkbox']:checked + .toggle-slider::before {
+  transform: translateX(24px);
+}
+
+.toggle-label {
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+}
+
+.toggle-description {
+  display: block;
+  color: #666;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.4;
+}

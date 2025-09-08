@@ -7,6 +7,7 @@ const resultDiv = document.getElementById('result');
 let hostedFieldsInstance;
 let paypalCheckoutInstance;
 let venmoInstance;
+let clientInstance; // Store client instance for Venmo re-initialization
 
 // Initialize Braintree when page loads
 document.addEventListener('DOMContentLoaded', async () => {
@@ -33,7 +34,7 @@ async function initializeBraintree() {
     }
 
     // Create Braintree client
-    const clientInstance = await braintree.client.create({
+    clientInstance = await braintree.client.create({
       authorization: tokenData.clientToken,
     });
 
@@ -83,8 +84,11 @@ async function initializeBraintree() {
     // Initialize PayPal
     await initializePayPal(clientInstance);
 
-    // Initialize Venmo
-    await initializeVenmo(clientInstance);
+    // Initialize Venmo (default to web login mode)
+    await initializeVenmo(clientInstance, false);
+
+    // Set up Venmo toggle listener
+    setupVenmoToggle();
 
     console.log('Braintree initialized successfully');
   } catch (error) {
@@ -340,15 +344,31 @@ async function initializePayPal(clientInstance) {
 }
 
 // Initialize Venmo
-async function initializeVenmo(clientInstance) {
+async function initializeVenmo(clientInstance, useDesktopMode = true) {
   try {
-    venmoInstance = await braintree.venmo.create({
-      client: clientInstance,
-      allowNewBrowserTab: false,
-      allowDesktop: true, // Enable Desktop QR Code experience
-    });
+    // Teardown existing Venmo instance if it exists
+    if (venmoInstance && typeof venmoInstance.teardown === 'function') {
+      await venmoInstance.teardown();
+    }
 
-    // Check if Venmo is available (this will now return true for desktop with QR code support)
+    const venmoConfig = {
+      client: clientInstance,
+      paymentMethodUsage: 'single_use',
+    };
+
+    if (useDesktopMode) {
+      // Desktop QR Code mode
+      venmoConfig.allowDesktop = true;
+      venmoConfig.allowNewBrowserTab = false;
+    } else {
+      // Desktop Web Login mode
+      venmoConfig.allowDesktopWebLogin = true;
+      venmoConfig.allowNewBrowserTab = true;
+    }
+
+    venmoInstance = await braintree.venmo.create(venmoConfig);
+
+    // Check if Venmo is available
     if (!venmoInstance.isBrowserSupported()) {
       console.log('Venmo is not supported in this browser');
       document.getElementById('venmo-button').style.display = 'none';
@@ -357,12 +377,13 @@ async function initializeVenmo(clientInstance) {
 
     // Create proper Venmo button with Braintree styling
     const venmoButtonContainer = document.getElementById('venmo-button');
+    const modeText = useDesktopMode ? ' (QR Code)' : ' (Web Login)';
     venmoButtonContainer.innerHTML = `
       <button type="button" class="venmo-button" id="venmo-pay-button">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
           <path d="M15.8 2.2c1.1 1.7 1.6 3.6 1.6 5.8 0 5.1-2.8 10.7-7.9 16h-4L2.2 2.2h4.6l1.9 14.1c2.4-3.5 3.8-7 3.8-10.1 0-1.5-.3-2.9-.8-4h4.1z"/>
         </svg>
-        Pay with Venmo
+        Pay with Venmo${modeText}
       </button>
     `;
 
@@ -401,7 +422,7 @@ async function initializeVenmo(clientInstance) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
               <path d="M15.8 2.2c1.1 1.7 1.6 3.6 1.6 5.8 0 5.1-2.8 10.7-7.9 16h-4L2.2 2.2h4.6l1.9 14.1c2.4-3.5 3.8-7 3.8-10.1 0-1.5-.3-2.9-.8-4h4.1z"/>
             </svg>
-            Pay with Venmo
+            Pay with Venmo${modeText}
           `;
         });
     };
@@ -410,6 +431,39 @@ async function initializeVenmo(clientInstance) {
     console.error('Error initializing Venmo:', error);
     document.getElementById('venmo-button').style.display = 'none';
   }
+}
+
+// Set up Venmo toggle functionality
+function setupVenmoToggle() {
+  const toggle = document.getElementById('venmo-desktop-toggle');
+  if (!toggle) {
+    console.error('Venmo toggle element not found');
+    return;
+  }
+
+  toggle.addEventListener('change', async function () {
+    const useDesktopMode = this.checked;
+    console.log(
+      `Switching Venmo to ${useDesktopMode ? 'Desktop QR' : 'Web Login'} mode`
+    );
+
+    try {
+      // Show loading state in the container
+      const venmoButtonContainer = document.getElementById('venmo-button');
+      venmoButtonContainer.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; padding: 12px; background-color: #f8f9fa; border-radius: 6px; color: #666;">
+          <span style="display: inline-block; width: 16px; height: 16px; border: 2px solid #666; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px;"></span>
+          Switching mode...
+        </div>
+      `;
+
+      // Re-initialize Venmo with new mode
+      await initializeVenmo(clientInstance, useDesktopMode);
+    } catch (error) {
+      console.error('Error switching Venmo mode:', error);
+      showResult('Failed to switch Venmo mode. Please try again.', 'error');
+    }
+  });
 }
 
 // Load PayPal's checkout.js script

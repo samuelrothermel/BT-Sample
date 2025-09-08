@@ -42,7 +42,8 @@ app.get('/client_token', async (req, res) => {
 
 // Process payment
 app.post('/api/sale', async (req, res) => {
-  const { paymentMethodNonce, amount } = req.body;
+  const { paymentMethodNonce, amount, billingAddress, vaultPaymentMethod } =
+    req.body;
 
   if (!paymentMethodNonce) {
     return res.status(400).json({ error: 'Payment method nonce is required' });
@@ -53,24 +54,57 @@ app.post('/api/sale', async (req, res) => {
   }
 
   try {
-    const result = await gateway.transaction.sale({
+    const transactionData = {
       amount: parseFloat(amount).toFixed(2),
       paymentMethodNonce: paymentMethodNonce,
       options: {
         submitForSettlement: true,
       },
-    });
+    };
+
+    // Add billing address if provided
+    if (billingAddress) {
+      transactionData.billing = billingAddress;
+    }
+
+    // Add vaulting if requested
+    if (vaultPaymentMethod) {
+      transactionData.options.storeInVaultOnSuccess = true;
+    }
+
+    console.log('Transaction data:', transactionData);
+
+    const result = await gateway.transaction.sale(transactionData);
 
     if (result.success) {
       console.log('Transaction successful:', result.transaction.id);
-      res.json({
+
+      const response = {
         success: true,
         transaction: {
           id: result.transaction.id,
           status: result.transaction.status,
           amount: result.transaction.amount,
         },
-      });
+      };
+
+      // Include vault information if payment method was vaulted
+      if (
+        result.transaction.creditCard &&
+        result.transaction.creditCard.token
+      ) {
+        response.vaultedPaymentMethod = {
+          token: result.transaction.creditCard.token,
+          maskedNumber: result.transaction.creditCard.maskedNumber,
+          cardType: result.transaction.creditCard.cardType,
+        };
+        console.log(
+          'Payment method vaulted with token:',
+          result.transaction.creditCard.token
+        );
+      }
+
+      res.json(response);
     } else {
       console.error('Transaction failed:', result.message);
       res.status(400).json({

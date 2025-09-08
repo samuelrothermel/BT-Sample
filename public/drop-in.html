@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Braintree Drop-In UI Demo</title>
+    <link rel="stylesheet" href="drop-in.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Braintree Drop-In UI Demo</h1>
+            <p>Simple payment processing with Braintree's pre-built UI</p>
+            <a href="index.html" class="back-link">← Back to Samples</a>
+        </header>
+
+        <main>
+            <div class="payment-form">
+                <h2>Payment Information</h2>
+                
+                <!-- Test Card Information -->
+                <div class="test-cards-info">
+                    <details>
+                        <summary>🧪 Test Cards Info</summary>
+                        <div class="test-cards-content">
+                            <p><strong>Standard Test Cards:</strong></p>
+                            <ul>
+                                <li><strong>Visa:</strong> 4111111111111111</li>
+                                <li><strong>Mastercard:</strong> 5555555555554444</li>
+                                <li><strong>American Express:</strong> 378282246310005</li>
+                                <li><strong>Discover:</strong> 6011111111111117</li>
+                            </ul>
+                            <p><strong>PayPal:</strong> Use sandbox credentials or test@example.com</p>
+                        </div>
+                    </details>
+                </div>
+                
+                <!-- Amount input -->
+                <div class="form-group">
+                    <label for="amount">Amount ($)</label>
+                    <input type="number" id="amount" min="0.01" step="0.01" value="10.00" required>
+                </div>
+
+                <!-- Drop-In UI Container -->
+                <div id="dropin-container" class="dropin-wrapper"></div>
+
+                <!-- Submit Button -->
+                <button type="button" id="submit-button" disabled>
+                    <span class="button-text">Process Payment</span>
+                    <span class="loading-spinner" style="display: none;">
+                        <span class="spinner"></span>
+                        Processing...
+                    </span>
+                </button>
+
+                <!-- Results -->
+                <div id="result" class="result"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Braintree Drop-In SDK -->
+    <script src="https://js.braintreegateway.com/web/dropin/1.44.0/js/dropin.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="drop-in.js"></script>
+</body>
+</html>
