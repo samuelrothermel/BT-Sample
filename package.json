@@ -4,8 +4,8 @@
   "description": "A simple Braintree Hosted Fields integration with Express",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "nodemon server.js",
+    "dev": "nodemon server.js"
   },
   "dependencies": {
     "braintree": "^3.32.0",
