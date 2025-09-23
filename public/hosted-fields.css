@@ -121,6 +121,27 @@ header p {
   gap: 20px;
 }
 
+/* Checkbox for vault payment method */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 5px;
+}
+
+.checkbox-container input[type='checkbox'] {
+  margin-right: 10px;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+.checkbox-label {
+  font-size: 14px;
+  color: #555;
+  font-weight: 400;
+}
+
 label {
   display: block;
   margin-bottom: 8px;

@@ -70,14 +70,26 @@ app.post('/api/sale', async (req, res) => {
     // Add vaulting if requested
     if (vaultPaymentMethod) {
       transactionData.options.storeInVaultOnSuccess = true;
+
+      // For PayPal Checkout with Vault, we need to ensure a customer is created
+      if (!transactionData.customer) {
+        transactionData.customer = {
+          firstName: 'PayPal',
+          lastName: 'Customer',
+        };
+      }
     }
 
-    console.log('Transaction data:', transactionData);
+    console.log('Transaction data:', JSON.stringify(transactionData, null, 2));
 
     const result = await gateway.transaction.sale(transactionData);
 
     if (result.success) {
       console.log('Transaction successful:', result.transaction.id);
+      console.log(
+        'Full transaction result:',
+        JSON.stringify(result.transaction, null, 2)
+      );
 
       const response = {
         success: true,
@@ -85,6 +97,8 @@ app.post('/api/sale', async (req, res) => {
           id: result.transaction.id,
           status: result.transaction.status,
           amount: result.transaction.amount,
+          // Include PayPal details if available
+          paypal: result.transaction.paypal,
         },
       };
 
@@ -97,11 +111,46 @@ app.post('/api/sale', async (req, res) => {
           token: result.transaction.creditCard.token,
           maskedNumber: result.transaction.creditCard.maskedNumber,
           cardType: result.transaction.creditCard.cardType,
+          customerId: result.transaction.customer
+            ? result.transaction.customer.id
+            : null,
         };
         console.log(
           'Payment method vaulted with token:',
           result.transaction.creditCard.token
         );
+        if (result.transaction.customer) {
+          console.log('Customer ID:', result.transaction.customer.id);
+        }
+      } else if (result.transaction.paypal && result.transaction.paypal.token) {
+        // Handle vaulted PayPal accounts
+        let token = result.transaction.paypal.token;
+
+        console.log(
+          'PayPal transaction details:',
+          JSON.stringify(result.transaction.paypal, null, 2)
+        );
+
+        // Check for implicitly vaulted payment method (from Checkout with Vault flow)
+        if (result.transaction.paypal.implicitlyVaultedPaymentMethodToken) {
+          token = result.transaction.paypal.implicitlyVaultedPaymentMethodToken;
+          console.log('PayPal account implicitly vaulted with token:', token);
+        } else {
+          console.log('No implicitly vaulted token found in the response');
+        }
+
+        response.vaultedPaymentMethod = {
+          token: token,
+          email: result.transaction.paypal.payerEmail,
+          paymentType: 'PayPal',
+          customerId: result.transaction.customer
+            ? result.transaction.customer.id
+            : null,
+        };
+        console.log('PayPal account vaulted with token:', token);
+        if (result.transaction.customer) {
+          console.log('Customer ID:', result.transaction.customer.id);
+        }
       }
 
       res.json(response);

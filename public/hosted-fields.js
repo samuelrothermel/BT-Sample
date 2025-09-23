@@ -3,6 +3,7 @@ const form = document.getElementById('payment-form');
 const submitButton = document.getElementById('submit-button');
 const amountInput = document.getElementById('amount');
 const resultDiv = document.getElementById('result');
+const vaultCheckbox = document.getElementById('vault-payment-method');
 
 let hostedFieldsInstance;
 let paypalCheckoutInstance;
@@ -13,6 +14,16 @@ let clientInstance; // Store client instance for Venmo re-initialization
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     await initializeBraintree();
+
+    // Add event listener to the vault checkbox to re-render PayPal button when it changes
+    if (vaultCheckbox) {
+      vaultCheckbox.addEventListener('change', function () {
+        // Re-initialize PayPal with the new vault preference
+        if (clientInstance) {
+          initializePayPal(clientInstance);
+        }
+      });
+    }
   } catch (error) {
     console.error('Failed to initialize Braintree:', error);
     showResult(
@@ -81,8 +92,8 @@ async function initializeBraintree() {
     // Set up event listeners for Hosted Fields
     setupHostedFieldsListeners();
 
-    // Initialize PayPal
-    await initializePayPal(clientInstance);
+    // Initialize PayPal (with Promise chain)
+    initializePayPal(clientInstance);
 
     // Initialize Venmo (default to web login mode)
     await initializeVenmo(clientInstance, false);
@@ -208,16 +219,40 @@ form.addEventListener('submit', async event => {
       body: JSON.stringify({
         paymentMethodNonce: nonce,
         amount: amount,
+        vaultPaymentMethod: vaultCheckbox.checked,
       }),
     });
 
     const result = await response.json();
 
     if (result.success) {
-      showResult(
-        `Payment successful! Transaction ID: ${result.transaction.id}. Amount: $${result.transaction.amount}`,
-        'success'
-      );
+      let successMessage = `Payment successful! Transaction ID: ${result.transaction.id}. Amount: $${result.transaction.amount}`;
+
+      // Add vaulted payment method info if available
+      if (result.vaultedPaymentMethod) {
+        successMessage += `<br><br><strong>Payment Method saved for future use!</strong><br>`;
+
+        // Display appropriate details based on payment method type
+        if (result.vaultedPaymentMethod.paymentType === 'PayPal') {
+          successMessage += `
+            Payment Type: PayPal<br>
+            PayPal Email: ${result.vaultedPaymentMethod.email}<br>
+            Payment Method Token: ${result.vaultedPaymentMethod.token}`;
+        } else {
+          successMessage += `
+            Card ending in: ${result.vaultedPaymentMethod.maskedNumber.slice(
+              -4
+            )}<br>
+            Type: ${result.vaultedPaymentMethod.cardType}<br>
+            Payment Method Token: ${result.vaultedPaymentMethod.token}`;
+        }
+
+        if (result.vaultedPaymentMethod.customerId) {
+          successMessage += `<br>Customer ID: ${result.vaultedPaymentMethod.customerId}`;
+        }
+      }
+
+      showResult(successMessage, 'success');
       // Reset form
       form.reset();
       amountInput.value = '10.00';
@@ -249,12 +284,7 @@ function showResult(message, type) {
   resultDiv.className = `result ${type}`;
   resultDiv.style.display = 'block';
 
-  // Auto-hide success messages after 10 seconds
-  if (type === 'success') {
-    setTimeout(() => {
-      resultDiv.style.display = 'none';
-    }, 10000);
-  }
+  // No auto-hide for success messages - keeping them persistent as requested
 }
 
 // Set loading state
@@ -286,61 +316,117 @@ function setLoading(loading) {
 }
 
 // Initialize PayPal
-async function initializePayPal(clientInstance) {
-  try {
-    paypalCheckoutInstance = await braintree.paypalCheckout.create({
-      client: clientInstance,
-    });
-
-    // Load PayPal's checkout.js
-    await loadPayPalScript();
-
-    // Render PayPal button
-    paypal
-      .Buttons({
-        fundingSource: paypal.FUNDING.PAYPAL,
-
-        createOrder: function () {
-          const amount = amountInput.value;
-          if (!amount || parseFloat(amount) <= 0) {
-            showResult('Please enter a valid amount.', 'error');
-            return;
-          }
-
-          return paypalCheckoutInstance.createPayment({
-            flow: 'checkout',
-            amount: parseFloat(amount).toFixed(2),
-            currency: 'USD',
-            intent: 'sale',
-          });
-        },
-
-        onApprove: function (data) {
-          return paypalCheckoutInstance
-            .tokenizePayment(data)
-            .then(function (payload) {
-              // Send the nonce to your server
-              return processPayment(payload.nonce, amountInput.value);
-            });
-        },
-
-        onCancel: function (data) {
-          console.log('PayPal payment cancelled:', data);
-          showResult('PayPal payment was cancelled.', 'info');
-        },
-
-        onError: function (err) {
-          console.error('PayPal error:', err);
-          showResult('PayPal payment failed. Please try again.', 'error');
-        },
-      })
-      .render('#paypal-button');
-
-    console.log('PayPal initialized successfully');
-  } catch (error) {
-    console.error('Error initializing PayPal:', error);
-    document.getElementById('paypal-button').style.display = 'none';
+function initializePayPal(clientInstance) {
+  // Clear any existing PayPal button
+  const paypalContainer = document.getElementById('paypal-button');
+  if (paypalContainer) {
+    paypalContainer.innerHTML = '';
   }
+
+  // Create a PayPal Checkout component
+  return braintree.paypalCheckout
+    .create({
+      client: clientInstance,
+    })
+    .then(function (checkoutInstance) {
+      // Store the instance for later use
+      paypalCheckoutInstance = checkoutInstance;
+
+      // Load the PayPal SDK
+      return paypalCheckoutInstance.loadPayPalSDK({
+        currency: 'USD',
+        intent: 'capture',
+        commit: true, // Show the Pay Now button on PayPal review page
+      });
+    })
+    .then(function () {
+      // Create a function for the PayPal button that checks the vault checkbox state
+      // This ensures we're only providing either createOrder OR createBillingAgreement, not both
+      const getButtonConfig = function () {
+        const config = {
+          fundingSource: paypal.FUNDING.PAYPAL,
+
+          onApprove: function (data) {
+            console.log('PayPal onApprove data:', data);
+            return paypalCheckoutInstance
+              .tokenizePayment(data)
+              .then(function (payload) {
+                // Show a message that we're processing the payment
+                showResult('Processing your payment...', 'info');
+                console.log('PayPal tokenize payload:', payload);
+
+                // Send the nonce to your server
+                return processPayment(payload.nonce, amountInput.value);
+              });
+          },
+          onCancel: function (data) {
+            console.log('PayPal payment cancelled:', data);
+            showResult('PayPal payment was cancelled.', 'info');
+          },
+
+          onError: function (err) {
+            console.error('PayPal error:', err);
+            showResult('PayPal payment failed. Please try again.', 'error');
+          },
+        };
+
+        // Add EITHER createOrder OR createBillingAgreement based on checkbox state, but NOT both
+        if (vaultCheckbox.checked) {
+          // For Checkout with Vault flow - process a payment and vault at the same time
+          config.createOrder = function () {
+            const amount = amountInput.value;
+            if (!amount || parseFloat(amount) <= 0) {
+              showResult('Please enter a valid amount.', 'error');
+              return;
+            }
+
+            return paypalCheckoutInstance.createPayment({
+              flow: 'checkout',
+              amount: parseFloat(amount).toFixed(2),
+              currency: 'USD',
+              intent: 'capture',
+              requestBillingAgreement: true, // This enables Checkout with Vault flow
+              billingAgreementDetails: {
+                description: 'Your payment method will be saved for future use',
+              },
+              useraction: 'commit', // Force PayPal to show the confirmation page
+            });
+          };
+        } else {
+          // For regular payments, use createOrder with intent=capture
+          config.createOrder = function () {
+            const amount = amountInput.value;
+            if (!amount || parseFloat(amount) <= 0) {
+              showResult('Please enter a valid amount.', 'error');
+              return;
+            }
+
+            return paypalCheckoutInstance.createPayment({
+              flow: 'checkout',
+              amount: parseFloat(amount).toFixed(2),
+              currency: 'USD',
+              intent: 'capture',
+              useraction: 'commit', // Force PayPal to show the confirmation page
+            });
+          };
+        }
+
+        return config;
+      };
+
+      // Create and render the PayPal button with the appropriate configuration
+      return paypal.Buttons(getButtonConfig()).render('#paypal-button');
+    })
+    .then(function () {
+      // The PayPal button will be rendered in an html element with the ID
+      // 'paypal-button'. This function will be called when the PayPal button
+      // is set up and ready to be used
+      console.log('PayPal initialized successfully');
+    })
+    .catch(function (error) {
+      console.error('Error initializing PayPal:', error);
+      document.getElementById('paypal-button').style.display = 'none';
+    });
 }
 
 // Initialize Venmo
@@ -466,26 +552,12 @@ function setupVenmoToggle() {
   });
 }
 
-// Load PayPal's checkout.js script
-function loadPayPalScript() {
-  return new Promise((resolve, reject) => {
-    if (window.paypal) {
-      resolve();
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src =
-      'https://www.paypal.com/sdk/js?client-id=sandbox&currency=USD&intent=capture&disable-funding=credit,card';
-    script.onload = resolve;
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
-
 // Process payment with any payment method
 async function processPayment(nonce, amount) {
   try {
+    console.log('Processing payment with nonce:', nonce);
+    console.log('Vault checkbox state:', vaultCheckbox.checked);
+
     const response = await fetch('/api/sale', {
       method: 'POST',
       headers: {
@@ -494,16 +566,62 @@ async function processPayment(nonce, amount) {
       body: JSON.stringify({
         paymentMethodNonce: nonce,
         amount: amount,
+        vaultPaymentMethod: vaultCheckbox.checked,
       }),
     });
 
     const result = await response.json();
+    console.log('Server response:', result);
+
+    // Directly check for implicitly vaulted token in the response
+    if (
+      result.transaction &&
+      result.transaction.paypal &&
+      result.transaction.paypal.implicitlyVaultedPaymentMethodToken
+    ) {
+      console.log(
+        'Found implicitly vaulted token on client side:',
+        result.transaction.paypal.implicitlyVaultedPaymentMethodToken
+      );
+    }
 
     if (result.success) {
-      showResult(
-        `Payment successful! Transaction ID: ${result.transaction.id}. Amount: $${result.transaction.amount}`,
-        'success'
-      );
+      let successMessage = `Payment successful! <br> Transaction ID: ${result.transaction.id} <br> Amount: $${result.transaction.amount}`;
+
+      // Check for implicitly vaulted token and add it to the message
+      if (
+        result.transaction &&
+        result.transaction.paypal &&
+        result.transaction.paypal.implicitlyVaultedPaymentMethodToken
+      ) {
+        successMessage += `<br>Implicitly Vaulted Token: ${result.transaction.paypal.implicitlyVaultedPaymentMethodToken}`;
+      }
+
+      // Add vaulted payment method info if available
+      if (result.vaultedPaymentMethod) {
+        successMessage += `<br><br>Payment Method saved for future use!<br>`;
+
+        // Display appropriate details based on payment method type
+        if (result.vaultedPaymentMethod.paymentType === 'PayPal') {
+          successMessage += `
+            Payment Type: PayPal<br>
+            PayPal Email: ${result.vaultedPaymentMethod.email}<br>
+            Payment Method Token: ${result.vaultedPaymentMethod.token}`;
+        } else {
+          successMessage += `
+            Card ending in: ${result.vaultedPaymentMethod.maskedNumber.slice(
+              -4
+            )}<br>
+            Type: ${result.vaultedPaymentMethod.cardType}<br>
+            Payment Method Token: ${result.vaultedPaymentMethod.token}`;
+        }
+
+        if (result.vaultedPaymentMethod.customerId) {
+          successMessage += `<br>Customer ID: ${result.vaultedPaymentMethod.customerId}`;
+        }
+      }
+
+      showResult(successMessage, 'success');
       // Reset amount input
       amountInput.value = '10.00';
     } else {

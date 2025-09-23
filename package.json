@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "report": "node generate-report.js",
+    "report:daily": "node generate-report.js --days 1 --format table",
+    "report:weekly": "node generate-report.js --days 7 --format csv",
+    "report:monthly": "node generate-report.js --days 30 --format csv"
   },
   "dependencies": {
     "braintree": "^3.32.0",
