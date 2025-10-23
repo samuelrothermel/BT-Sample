@@ -1,0 +1,549 @@
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  color: #333;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 40px;
+  color: white;
+}
+
+header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  font-weight: 300;
+}
+
+header p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin-bottom: 15px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  color: white;
+  text-decoration: none;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.back-link:hover {
+  opacity: 1;
+}
+
+/* Payment form styles */
+.payment-form {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.payment-form h2 {
+  margin-bottom: 30px;
+  color: #333;
+  font-weight: 400;
+}
+
+/* Vault info section */
+.vault-info {
+  margin-bottom: 25px;
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.vault-info details {
+  background: #f8f9fa;
+}
+
+.vault-info summary {
+  padding: 12px 16px;
+  cursor: pointer;
+  background: #e3f2fd;
+  border-bottom: 1px solid #bbdefb;
+  font-weight: 500;
+  color: #1565c0;
+  user-select: none;
+}
+
+.vault-info summary:hover {
+  background: #d1ecf1;
+}
+
+.vault-info-content {
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.vault-info-content ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.vault-info-content li {
+  margin-bottom: 5px;
+}
+
+.vault-info-content p {
+  margin: 10px 0;
+  color: #555;
+}
+
+.form-group {
+  margin-bottom: 25px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.field-note {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+}
+
+input[type='number'],
+input[type='text'],
+select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+  font-family: inherit;
+}
+
+input[type='number']:focus,
+input[type='text']:focus,
+select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+select {
+  cursor: pointer;
+  background-color: white;
+}
+
+/* Hosted Fields styles */
+.hosted-field {
+  height: 50px;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 6px;
+  background: white;
+  transition: border-color 0.3s ease;
+  display: flex;
+  align-items: center;
+}
+
+.hosted-field.braintree-hosted-fields-focused {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.hosted-field.braintree-hosted-fields-valid {
+  border-color: #28a745;
+}
+
+.hosted-field.braintree-hosted-fields-invalid {
+  border-color: #dc3545;
+}
+
+/* Submit button */
+#submit-button {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+#submit-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+#submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+#submit-button:active {
+  transform: translateY(0);
+}
+
+.loading-spinner {
+  display: none;
+}
+
+#submit-button.loading .button-text {
+  display: none;
+}
+
+#submit-button.loading .loading-spinner {
+  display: inline;
+}
+
+/* Payment divider */
+.payment-divider {
+  margin: 30px 0;
+  text-align: center;
+  position: relative;
+}
+
+.payment-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e1e5e9;
+}
+
+.payment-divider span {
+  background: white;
+  padding: 0 20px;
+  color: #666;
+  font-size: 14px;
+  position: relative;
+}
+
+/* Alternative payment methods */
+.alternative-payment-method {
+  margin-bottom: 15px;
+}
+
+.paypal-vault-info {
+  margin-bottom: 15px;
+  padding: 15px;
+  background-color: #fff8e1;
+  border: 1px solid #ffecb3;
+  border-radius: 8px;
+}
+
+.paypal-vault-info h3 {
+  color: #e65100;
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.paypal-vault-info p {
+  color: #bf360c;
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.venmo-vault-info {
+  margin-bottom: 15px;
+  padding: 15px;
+  background-color: #e8f5e8;
+  border: 1px solid #c8e6c9;
+  border-radius: 8px;
+}
+
+.venmo-vault-info h3 {
+  color: #2e7d32;
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.venmo-vault-info p {
+  color: #1b5e20;
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.googlepay-vault-info {
+  margin-bottom: 15px;
+  padding: 15px;
+  background-color: #f3e5f5;
+  border: 1px solid #e1bee7;
+  border-radius: 8px;
+}
+
+.googlepay-vault-info h3 {
+  color: #6a1b9a;
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.googlepay-vault-info p {
+  color: #4a148c;
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.applepay-vault-info {
+  margin-bottom: 15px;
+  padding: 15px;
+  background-color: #f0f0f0;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+}
+
+.applepay-vault-info h3 {
+  color: #1d1d1f;
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.applepay-vault-info p {
+  color: #424245;
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.payment-button-container {
+  min-height: 50px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.error-message {
+  padding: 15px;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 14px;
+}
+
+/* Venmo button specific styling */
+#venmo-button .venmo-button {
+  width: 100%;
+  height: 50px;
+  border: none;
+  border-radius: 6px;
+  background-color: #3d95ce;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+
+#venmo-button .venmo-button:hover:not(:disabled) {
+  background-color: #357abd;
+  transform: translateY(-1px);
+}
+
+#venmo-button .venmo-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#venmo-button .venmo-button:active {
+  transform: translateY(0);
+}
+
+/* Google Pay button specific styling */
+#googlepay-button {
+  width: 100%;
+}
+
+#googlepay-button button,
+#googlepay-button .gpay-button {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  height: 50px !important;
+  border-radius: 6px !important;
+}
+
+/* Override Google Pay default styles */
+#googlepay-button .gpay-button-fill-white,
+#googlepay-button .gpay-button-fill-black {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+/* Apple Pay button specific styling */
+#applepay-button {
+  width: 100%;
+}
+
+#applepay-button .apple-pay-button,
+#applepay-button .bt-apple-pay-button {
+  width: 100% !important;
+  min-width: 100% !important;
+  height: 50px !important;
+  border-radius: 6px !important;
+  -webkit-appearance: -apple-pay-button;
+  appearance: -apple-pay-button;
+  -apple-pay-button-type: buy;
+  -apple-pay-button-style: black;
+}
+
+/* Fallback Apple Pay button styling */
+.apple-pay-button-fallback {
+  width: 100%;
+  height: 50px;
+  background-color: #000;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+
+.apple-pay-button-fallback:hover:not(:disabled) {
+  background-color: #333;
+  transform: translateY(-1px);
+}
+
+.apple-pay-button-fallback:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.apple-pay-button-fallback:active {
+  transform: translateY(0);
+}
+
+/* Result styles */
+.result {
+  margin-top: 30px;
+  padding: 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  display: none;
+}
+
+.result.success {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+  display: block;
+}
+
+.result.error {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  display: block;
+}
+
+.result.info {
+  background-color: #d1ecf1;
+  border: 1px solid #bee5eb;
+  color: #0c5460;
+  display: block;
+}
+
+/* Spinning animation for loading state */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+
+  .payment-form {
+    padding: 25px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  header h1 {
+    font-size: 2rem;
+  }
+}
+
+/* Billing address section */
+.billing-address-section {
+  margin-top: 30px;
+  padding-top: 25px;
+  border-top: 1px solid #e1e5e9;
+}
+
+.billing-address-section h3 {
+  font-size: 1.1rem;
+  margin-bottom: 20px;
+  color: #333;
+  font-weight: 500;
+}
+
+/* Loading state for the entire form */
+.payment-form.loading {
+  pointer-events: none;
+  opacity: 0.7;
+}

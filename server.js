@@ -29,6 +29,21 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Apple Pay domain association file
+app.get(
+  '/.well-known/apple-developer-merchantid-domain-association',
+  (req, res) => {
+    res.sendFile(
+      path.join(
+        __dirname,
+        'public',
+        '.well-known',
+        'apple-developer-merchantid-domain-association'
+      )
+    );
+  }
+);
+
 // Generate client token for Braintree
 app.get('/client_token', async (req, res) => {
   try {
@@ -42,8 +57,14 @@ app.get('/client_token', async (req, res) => {
 
 // Process payment
 app.post('/api/sale', async (req, res) => {
-  const { paymentMethodNonce, amount, billingAddress, vaultPaymentMethod } =
-    req.body;
+  const {
+    paymentMethodNonce,
+    amount,
+    billingAddress,
+    vaultPaymentMethod,
+    cardholderName,
+    paymentMethodType,
+  } = req.body;
 
   if (!paymentMethodNonce) {
     return res.status(400).json({ error: 'Payment method nonce is required' });
@@ -71,13 +92,23 @@ app.post('/api/sale', async (req, res) => {
     if (vaultPaymentMethod) {
       transactionData.options.storeInVaultOnSuccess = true;
 
-      // For PayPal Checkout with Vault, we need to ensure a customer is created
-      if (!transactionData.customer) {
-        transactionData.customer = {
+      // Create customer data for vaulting
+      let customerData = {};
+
+      if (billingAddress) {
+        customerData = {
+          firstName: billingAddress.firstName || 'Customer',
+          lastName: billingAddress.lastName || '',
+        };
+      } else {
+        // Fallback for PayPal or when no billing address
+        customerData = {
           firstName: 'PayPal',
           lastName: 'Customer',
         };
       }
+
+      transactionData.customer = customerData;
     }
 
     console.log('Transaction data:', JSON.stringify(transactionData, null, 2));
@@ -148,6 +179,47 @@ app.post('/api/sale', async (req, res) => {
             : null,
         };
         console.log('PayPal account vaulted with token:', token);
+        if (result.transaction.customer) {
+          console.log('Customer ID:', result.transaction.customer.id);
+        }
+      } else if (
+        result.transaction.venmoAccount &&
+        result.transaction.venmoAccount.token
+      ) {
+        // Handle vaulted Venmo accounts
+        response.vaultedPaymentMethod = {
+          token: result.transaction.venmoAccount.token,
+          username: result.transaction.venmoAccount.username,
+          paymentType: 'Venmo',
+          customerId: result.transaction.customer
+            ? result.transaction.customer.id
+            : null,
+        };
+        console.log(
+          'Venmo account vaulted with token:',
+          result.transaction.venmoAccount.token
+        );
+        if (result.transaction.customer) {
+          console.log('Customer ID:', result.transaction.customer.id);
+        }
+      } else if (
+        result.transaction.androidPayCard &&
+        result.transaction.androidPayCard.token
+      ) {
+        // Handle vaulted Google Pay/Android Pay accounts
+        response.vaultedPaymentMethod = {
+          token: result.transaction.androidPayCard.token,
+          maskedNumber: result.transaction.androidPayCard.last4,
+          cardType: result.transaction.androidPayCard.cardType,
+          paymentType: 'Google Pay',
+          customerId: result.transaction.customer
+            ? result.transaction.customer.id
+            : null,
+        };
+        console.log(
+          'Google Pay account vaulted with token:',
+          result.transaction.androidPayCard.token
+        );
         if (result.transaction.customer) {
           console.log('Customer ID:', result.transaction.customer.id);
         }
