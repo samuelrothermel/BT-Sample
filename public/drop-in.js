@@ -41,10 +41,45 @@ function initializeDropIn() {
             },
           },
           paypal: {
-            flow: 'vault',
+            flow: 'checkout',
+            amount: '30.00',
+            currency: 'USD',
+            enableShippingAddress: false,
+            buttonStyle: {
+              color: 'gold',
+              shape: 'rect',
+              size: 'responsive',
+            },
+          },
+          paypalCredit: {
+            flow: 'checkout',
+            amount: '30.00',
+            currency: 'USD',
           },
           venmo: {
             allowDesktop: true,
+          },
+          googlePay: {
+            merchantId: 'your-merchant-id', // Replace with your actual merchant ID
+            transactionInfo: {
+              totalPriceStatus: 'FINAL',
+              totalPrice: '30.00',
+              currencyCode: 'USD',
+            },
+            allowedPaymentMethods: [
+              {
+                type: 'CARD',
+                parameters: {
+                  allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
+                  allowedCardNetworks: [
+                    'VISA',
+                    'MASTERCARD',
+                    'AMEX',
+                    'DISCOVER',
+                  ],
+                },
+              },
+            ],
           },
         },
         function (createErr, instance) {
@@ -62,7 +97,32 @@ function initializeDropIn() {
           // Enable submit button
           button.disabled = false;
 
-          // Update PayPal amount when amount input changes
+          // Set initial amounts for PayPal and Google Pay
+          if (amountInput.value) {
+            try {
+              instance.updateConfiguration(
+                'paypal',
+                'amount',
+                amountInput.value
+              );
+              instance.updateConfiguration(
+                'paypalCredit',
+                'amount',
+                amountInput.value
+              );
+              instance.updateConfiguration('googlePay', {
+                transactionInfo: {
+                  totalPriceStatus: 'FINAL',
+                  totalPrice: amountInput.value,
+                  currencyCode: 'USD',
+                },
+              });
+            } catch (error) {
+              console.warn('Could not set initial amounts:', error);
+            }
+          }
+
+          // Update PayPal and Google Pay amounts when amount input changes
           amountInput.addEventListener('input', function () {
             if (instance && instance.updateConfiguration) {
               try {
@@ -71,8 +131,20 @@ function initializeDropIn() {
                   'amount',
                   amountInput.value
                 );
+                instance.updateConfiguration(
+                  'paypalCredit',
+                  'amount',
+                  amountInput.value
+                );
+                instance.updateConfiguration('googlePay', {
+                  transactionInfo: {
+                    totalPriceStatus: 'FINAL',
+                    totalPrice: amountInput.value,
+                    currencyCode: 'USD',
+                  },
+                });
               } catch (error) {
-                console.warn('Could not update PayPal amount:', error);
+                console.warn('Could not update payment method amounts:', error);
               }
             }
           });

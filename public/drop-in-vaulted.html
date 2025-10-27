@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Braintree Drop-In UI with Vaulting Demo</title>
+    <link rel="stylesheet" href="drop-in-vaulted.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Braintree Drop-In UI with Vaulting</h1>
+            <p>Easy payment processing with automatic payment method storage</p>
+            <a href="index.html" class="back-link">← Back to Samples</a>
+        </header>
+
+        <main>
+            <div class="payment-form">
+                <h2>Payment Information</h2>
+                
+                <!-- Vaulting Info -->
+                <div class="vaulting-info">
+                    <details>
+                        <summary>ℹ️ About Automatic Vaulting</summary>
+                        <div class="vaulting-info-content">
+                            <p><strong>What happens when you pay:</strong></p>
+                            <ul>
+                                <li>Your payment is processed immediately</li>
+                                <li>Your payment method is automatically saved securely</li>
+                                <li>Future payments can use the saved method without re-entry</li>
+                                <li>All payment methods (cards, PayPal, Venmo, etc.) are vaulted</li>
+                            </ul>
+                            <p><strong>Benefits:</strong></p>
+                            <ul>
+                                <li>Faster checkout for return customers</li>
+                                <li>Secure tokenized storage (no raw card data stored)</li>
+                                <li>Works with subscriptions and recurring billing</li>
+                            </ul>
+                        </div>
+                    </details>
+                </div>
+                
+                <!-- Test Card Information -->
+                <div class="test-cards-info">
+                    <details>
+                        <summary>🧪 Test Cards & Payment Methods</summary>
+                        <div class="test-cards-content">
+                            <p><strong>Standard Test Cards:</strong></p>
+                            <ul>
+                                <li><strong>Visa:</strong> 4111111111111111</li>
+                                <li><strong>Mastercard:</strong> 5555555555554444</li>
+                                <li><strong>American Express:</strong> 378282246310005</li>
+                                <li><strong>Discover:</strong> 6011111111111117</li>
+                            </ul>
+                            <p><strong>Alternative Payment Methods:</strong></p>
+                            <ul>
+                                <li><strong>PayPal:</strong> Use sandbox credentials or test@example.com</li>
+                                <li><strong>Venmo:</strong> Available on mobile or desktop QR mode</li>
+                                <li><strong>Google Pay:</strong> Available on supported browsers</li>
+                                <li><strong>Apple Pay:</strong> Available on Safari with supported devices</li>
+                                <li><strong>Google Pay:</strong> Chrome browser recommended, use test cards above</li>
+                            </ul>
+                        </div>
+                    </details>
+                </div>
+                
+                <!-- Amount input --> 
+                <div class="form-group">
+                    <label for="amount">Amount ($)</label>
+                    <input type="number" id="amount" min="0.01" step="0.01" value="15.00" required>
+                    <small class="field-note">This amount will be charged and the payment method will be saved for future use.</small>
+                </div>
+
+                <!-- Drop-In UI Container -->
+                <div id="dropin-container" class="dropin-wrapper"></div>
+
+                <!-- Submit Button -->
+                <button type="button" id="submit-button" disabled>
+                    <span class="button-text">Pay & Save Payment Method</span>
+                    <span class="loading-spinner" style="display: none;">
+                        <span class="spinner"></span>
+                        Processing...
+                    </span>
+                </button>
+
+                <!-- Results -->
+                <div id="result" class="result"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Google Pay API -->
+    <script async src="https://pay.google.com/gp/p/js/pay.js"></script>
+    
+    <!-- Braintree Drop-In SDK -->
+    <script src="https://js.braintreegateway.com/web/dropin/1.44.0/js/dropin.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="drop-in-vaulted.js"></script>
+</body>
+</html>
