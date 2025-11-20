@@ -9,6 +9,7 @@ let hostedFieldsInstance;
 let paypalCheckoutInstance;
 let venmoInstance;
 let clientInstance; // Store client instance for Venmo re-initialization
+let dataCollectorInstance;
 
 // Initialize Braintree when page loads
 document.addEventListener('DOMContentLoaded', async () => {
@@ -48,6 +49,20 @@ async function initializeBraintree() {
     clientInstance = await braintree.client.create({
       authorization: tokenData.clientToken,
     });
+
+    // Initialize Device Data Collector for fraud prevention
+    try {
+      dataCollectorInstance = await braintree.dataCollector.create({
+        client: clientInstance,
+        paypal: true, // Collect PayPal device data
+        kount: true, // Collect Kount device data
+      });
+      console.log('Device data collector initialized successfully');
+    } catch (error) {
+      console.warn('Device data collector failed to initialize:', error);
+      // Continue without device data collection if it fails
+      dataCollectorInstance = null;
+    }
 
     // Create Hosted Fields
     hostedFieldsInstance = await braintree.hostedFields.create({
@@ -210,6 +225,11 @@ form.addEventListener('submit', async event => {
     console.log('Payment method nonce:', nonce);
     console.log('Card details:', details);
 
+    // Get device data for fraud prevention
+    const deviceData = dataCollectorInstance
+      ? dataCollectorInstance.deviceData
+      : null;
+
     // Send payment data to server
     const response = await fetch('/api/sale', {
       method: 'POST',
@@ -220,6 +240,7 @@ form.addEventListener('submit', async event => {
         paymentMethodNonce: nonce,
         amount: amount,
         vaultPaymentMethod: vaultCheckbox.checked,
+        deviceData: deviceData,
       }),
     });
 
@@ -567,6 +588,9 @@ async function processPayment(nonce, amount) {
         paymentMethodNonce: nonce,
         amount: amount,
         vaultPaymentMethod: vaultCheckbox.checked,
+        deviceData: dataCollectorInstance
+          ? dataCollectorInstance.deviceData
+          : null,
       }),
     });
 

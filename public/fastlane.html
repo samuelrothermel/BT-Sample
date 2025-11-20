@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Braintree Fastlane Demo</title>
+    <link rel="stylesheet" href="fastlane.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Fastlane Checkout Demo</h1>
+            <p>Accelerated guest checkout experience with PayPal Fastlane</p>
+            <a href="index.html" class="back-link">← Back to Samples</a>
+        </header>
+
+        <main>
+            <div class="payment-form">
+                <h2>Checkout</h2>
+                
+                <!-- Fastlane Info -->
+                <div class="fastlane-info">
+                    <details>
+                        <summary>About Fastlane</summary>
+                        <div class="fastlane-info-content">
+                            <p>Fastlane is PayPal's accelerated guest checkout experience that:</p>
+                            <ul>
+                                <li>Enables faster checkout for guest users</li>
+                                <li>Prefills payment and shipping information</li>
+                                <li>Provides secure authentication</li>
+                                <li>Works without requiring a PayPal account</li>
+                                <li>Supports multiple payment methods</li>
+                            </ul>
+                            <p><strong>Test Email:</strong> Use any email for testing in development</p>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="order-summary">
+                    <h3>Order Summary</h3>
+                    <div class="order-item">
+                        <span>Sample Product</span>
+                        <span>$25.00</span>
+                    </div>
+                    <div class="order-item">
+                        <span>Shipping</span>
+                        <span>$5.00</span>
+                    </div>
+                    <div class="order-item">
+                        <span>Tax</span>
+                        <span>$2.40</span>
+                    </div>
+                    <div class="order-total">
+                        <span>Total</span>
+                        <span id="order-total">$32.40</span>
+                    </div>
+                </div>
+
+                <!-- Email Input for Fastlane -->
+                <div id="email-section" class="email-section">
+                    <h3>Contact Information</h3>
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" placeholder="Enter your email" required>
+                        <small class="field-note">We'll use this to check for existing Fastlane profiles</small>
+                    </div>
+                    
+                    <!-- Fastlane Watermark -->
+                    <div id="watermark-container" class="watermark-container">
+                        <img src="https://www.paypalobjects.com/fastlane-v1/assets/fastlane-with-tooltip_en_sm_light.0808.svg" alt="Powered by Fastlane" />
+                    </div>
+                    
+                    <button type="button" id="continue-button" class="continue-button">
+                        Continue to Payment
+                    </button>
+                </div>
+
+                <!-- Fastlane Checkout Components (Hidden initially) -->
+                <div id="fastlane-checkout" class="fastlane-checkout" style="display: none;">
+                    
+                    <!-- Shipping Information -->
+                    <div class="shipping-section">
+                        <h3>Shipping Information</h3>
+                        <div id="shipping-component"></div>
+                        <button type="button" id="edit-shipping" class="edit-button">Edit Shipping</button>
+                    </div>
+
+                    <!-- Payment Information -->
+                    <div class="payment-section">
+                        <h3>Payment Information</h3>
+                        <div id="payment-component"></div>
+                        <button type="button" id="edit-payment" class="edit-button">Edit Payment</button>
+                    </div>
+
+                    <!-- Complete Order Button -->
+                    <button type="button" id="place-order" class="place-order-button" disabled>
+                        <span class="button-text">Place Order - $32.40</span>
+                        <span class="loading-spinner" style="display: none;">
+                            <span class="spinner"></span>
+                            Processing...
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Result Display -->
+                <div id="result" class="result"></div>
+                
+                <!-- Fastlane Attribution -->
+                <div class="fastlane-powered">
+                    <p>Powered by <a href="https://developer.paypal.com/docs/fastlane/" target="_blank">PayPal Fastlane</a></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Braintree SDK with Fastlane (version 3.133.0 or greater required) -->
+    <script src="https://js.braintreegateway.com/web/3.133.0/js/client.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.133.0/js/fastlane.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.133.0/js/data-collector.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="fastlane.js"></script>
+</body>
+</html>

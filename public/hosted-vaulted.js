@@ -16,12 +16,23 @@ const billingLocalityInput = document.getElementById('billing-locality');
 const billingRegionInput = document.getElementById('billing-region');
 const billingCountryInput = document.getElementById('billing-country');
 
+// ACH Bank Account fields
+const achForm = document.getElementById('ach-form');
+const achSubmitButton = document.getElementById('ach-submit-button');
+const bankRoutingNumberInput = document.getElementById('bank-routing-number');
+const bankAccountNumberInput = document.getElementById('bank-account-number');
+const bankAccountTypeInput = document.getElementById('bank-account-type');
+const bankAccountHolderNameInput = document.getElementById(
+  'bank-account-holder-name'
+);
+
 let hostedFieldsInstance;
 let paypalCheckoutInstance;
 let venmoInstance;
 let googlePaymentInstance;
 let applePayInstance;
 let clientInstance;
+let dataCollectorInstance;
 
 // Initialize Braintree when page loads
 document.addEventListener('DOMContentLoaded', async () => {
@@ -51,6 +62,20 @@ async function initializeBraintree() {
     clientInstance = await braintree.client.create({
       authorization: tokenData.clientToken,
     });
+
+    // Initialize Device Data Collector for fraud prevention
+    try {
+      dataCollectorInstance = await braintree.dataCollector.create({
+        client: clientInstance,
+        paypal: true, // Collect PayPal device data
+        kount: true, // Collect Kount device data
+      });
+      console.log('Device data collector initialized successfully');
+    } catch (error) {
+      console.warn('Device data collector failed to initialize:', error);
+      // Continue without device data collection if it fails
+      dataCollectorInstance = null;
+    }
 
     // Create Hosted Fields
     hostedFieldsInstance = await braintree.hostedFields.create({
@@ -233,6 +258,20 @@ function getBillingAddress() {
   };
 }
 
+// Helper function to get hosted field values
+async function getHostedFieldValue(fieldName) {
+  try {
+    if (hostedFieldsInstance) {
+      const state = hostedFieldsInstance.getState();
+      return state.fields[fieldName].value || '';
+    }
+    return '';
+  } catch (error) {
+    console.warn(`Could not get hosted field value for ${fieldName}:`, error);
+    return '';
+  }
+}
+
 // Handle form submission (Hosted Fields)
 form.addEventListener('submit', async event => {
   event.preventDefault();
@@ -282,6 +321,9 @@ form.addEventListener('submit', async event => {
         vaultPaymentMethod: true, // Always vault in this demo
         billingAddress: billingAddress,
         cardholderName: cardholderNameInput.value.trim(),
+        deviceData: dataCollectorInstance
+          ? dataCollectorInstance.deviceData
+          : null,
       }),
     });
 
@@ -336,6 +378,14 @@ form.addEventListener('submit', async event => {
     setLoading(false);
   }
 });
+
+// Handle ACH form submission
+if (achForm) {
+  achForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    await processACHPayment();
+  });
+}
 
 // Initialize PayPal Vault Flow
 function initializePayPalVault(clientInstance) {
@@ -418,6 +468,157 @@ function initializePayPalVault(clientInstance) {
       document.getElementById('paypal-button').innerHTML =
         '<div class="error-message">Failed to initialize PayPal. Please refresh the page.</div>';
     });
+}
+
+// Process ACH Bank Account Payment with Vaulting
+async function processACHPayment() {
+  const routingNumber = bankRoutingNumberInput.value.trim();
+  const accountNumber = bankAccountNumberInput.value.trim();
+  const accountType = bankAccountTypeInput.value;
+  const accountHolderName = bankAccountHolderNameInput.value.trim();
+  const amount = amountInput.value;
+
+  // Validate ACH form
+  if (
+    !routingNumber ||
+    !accountNumber ||
+    !accountType ||
+    !accountHolderName ||
+    !amount
+  ) {
+    showResult('Please fill in all required fields.', 'error');
+    return;
+  }
+
+  if (routingNumber.length !== 9 || !/^\d{9}$/.test(routingNumber)) {
+    showResult('Please enter a valid 9-digit routing number.', 'error');
+    return;
+  }
+
+  if (parseFloat(amount) <= 0) {
+    showResult('Please enter a valid amount greater than $0.00', 'error');
+    return;
+  }
+
+  // Show loading state
+  setACHLoadingState(true);
+
+  try {
+    // Get billing address
+    const billingAddress = {
+      firstName: accountHolderName.split(' ')[0] || '',
+      lastName: accountHolderName.split(' ').slice(1).join(' ') || '',
+      streetAddress: billingStreetAddressInput.value,
+      extendedAddress: billingExtendedAddressInput.value,
+      locality: billingLocalityInput.value,
+      region: billingRegionInput.value,
+      postalCode: document.getElementById('postal-code').querySelector('iframe')
+        ? await getHostedFieldValue('postalCode')
+        : '',
+      countryCodeAlpha2: billingCountryInput.value,
+    };
+
+    // Create bank account payload
+    const bankAccountData = {
+      type: 'us_bank_account',
+      routingNumber: routingNumber,
+      accountNumber: accountNumber,
+      accountType: accountType,
+      ownershipType: 'personal', // or 'business'
+      billingAddress: billingAddress,
+    };
+
+    // Send to server for processing with vaulting
+    const response = await fetch('/api/sale', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        amount: amount,
+        bankAccount: bankAccountData,
+        vault: true,
+        billingAddress: billingAddress,
+        deviceData: dataCollectorInstance
+          ? dataCollectorInstance.deviceData
+          : null,
+        options: {
+          storeInVault: true,
+          storeInVaultOnSuccess: true,
+        },
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      let successMessage = `ACH payment of $${amount} processed successfully!`;
+
+      if (result.transaction.customer && result.transaction.customer.id) {
+        successMessage += `\n\n🔐 Customer created with ID: ${result.transaction.customer.id}`;
+      }
+
+      if (
+        result.transaction.usBankAccount &&
+        result.transaction.usBankAccount.token
+      ) {
+        successMessage += `\n🏦 Bank account vaulted with token: ${result.transaction.usBankAccount.token}`;
+        successMessage += `\n🏛️ Bank: ${
+          result.transaction.usBankAccount.bankName || 'N/A'
+        }`;
+        successMessage += `\n🔢 Account: ****${
+          result.transaction.usBankAccount.last4 || 'N/A'
+        }`;
+      }
+
+      successMessage += `\n\n✨ Your bank account is now saved and can be used for future transactions!`;
+
+      showResult(successMessage, 'success', {
+        transactionId: result.transaction.id,
+        amount: result.transaction.amount,
+        status: result.transaction.status,
+        paymentMethod: 'ACH Bank Account',
+        vaultingInfo: {
+          customerId: result.transaction.customer?.id,
+          bankAccountToken: result.transaction.usBankAccount?.token,
+        },
+      });
+
+      // Reset ACH form
+      achForm.reset();
+      amountInput.value = '';
+    } else {
+      showResult(`ACH Payment failed: ${result.message}`, 'error', result);
+    }
+  } catch (error) {
+    console.error('ACH Payment error:', error);
+    showResult(
+      'An error occurred while processing your ACH payment. Please try again.',
+      'error'
+    );
+  }
+
+  setACHLoadingState(false);
+}
+
+// Set ACH loading state
+function setACHLoadingState(loading) {
+  const buttonText = achSubmitButton.querySelector('.button-text');
+  const loadingSpinner = achSubmitButton.querySelector('.loading-spinner');
+
+  if (loading) {
+    buttonText.style.display = 'none';
+    loadingSpinner.style.display = 'flex';
+    achSubmitButton.disabled = true;
+    achForm.style.pointerEvents = 'none';
+    achForm.style.opacity = '0.7';
+  } else {
+    buttonText.style.display = 'inline';
+    loadingSpinner.style.display = 'none';
+    achSubmitButton.disabled = false;
+    achForm.style.pointerEvents = 'auto';
+    achForm.style.opacity = '1';
+  }
 }
 
 // Process vaulted payment

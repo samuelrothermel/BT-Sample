@@ -3,6 +3,10 @@ const button = document.querySelector('#submit-button');
 const amountInput = document.getElementById('amount');
 const resultDiv = document.getElementById('result');
 
+// Braintree instances
+let clientInstance = null;
+let dataCollectorInstance = null;
+
 // Initialize Drop-In when page loads
 document.addEventListener('DOMContentLoaded', function () {
   initializeDropIn();
@@ -17,266 +21,292 @@ function initializeDropIn() {
         throw new Error('Failed to get client token');
       }
 
-      // Create Drop-In instance
-      braintree.dropin.create(
+      // Create Braintree client instance first for device data collection
+      braintree.client.create(
         {
           authorization: data.clientToken,
-          container: '#dropin-container',
-          vaultManager: true,
-          card: {
-            vault: {
-              vaultCard: true,
-            },
-            cardholderName: {
-              required: true,
-            },
-            billingAddress: {
-              required: true,
-            },
-            cvv: {
-              required: true,
-            },
-            postalCode: {
-              required: true,
-            },
-          },
-          paypal: {
-            flow: 'checkout',
-            amount: '30.00',
-            currency: 'USD',
-            enableShippingAddress: false,
-            buttonStyle: {
-              color: 'gold',
-              shape: 'rect',
-              size: 'responsive',
-            },
-          },
-          paypalCredit: {
-            flow: 'checkout',
-            amount: '30.00',
-            currency: 'USD',
-          },
-          venmo: {
-            allowDesktop: true,
-          },
-          googlePay: {
-            merchantId: 'your-merchant-id', // Replace with your actual merchant ID
-            transactionInfo: {
-              totalPriceStatus: 'FINAL',
-              totalPrice: '30.00',
-              currencyCode: 'USD',
-            },
-            allowedPaymentMethods: [
-              {
-                type: 'CARD',
-                parameters: {
-                  allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
-                  allowedCardNetworks: [
-                    'VISA',
-                    'MASTERCARD',
-                    'AMEX',
-                    'DISCOVER',
-                  ],
-                },
-              },
-            ],
-          },
         },
-        function (createErr, instance) {
-          if (createErr) {
-            console.error('Error creating Drop-In:', createErr);
+        function (clientErr, client) {
+          if (clientErr) {
+            console.error('Error creating client:', clientErr);
             showResult(
-              'Error initializing payment form: ' + createErr.message,
+              'Error initializing payment form: ' + clientErr.message,
               'error'
             );
             return;
           }
 
-          console.log('Drop-In initialized successfully');
+          clientInstance = client;
 
-          // Enable submit button
-          button.disabled = false;
-
-          // Set initial amounts for PayPal and Google Pay
-          if (amountInput.value) {
-            try {
-              instance.updateConfiguration(
-                'paypal',
-                'amount',
-                amountInput.value
-              );
-              instance.updateConfiguration(
-                'paypalCredit',
-                'amount',
-                amountInput.value
-              );
-              instance.updateConfiguration('googlePay', {
-                transactionInfo: {
-                  totalPriceStatus: 'FINAL',
-                  totalPrice: amountInput.value,
-                  currencyCode: 'USD',
-                },
-              });
-            } catch (error) {
-              console.warn('Could not set initial amounts:', error);
-            }
-          }
-
-          // Update PayPal and Google Pay amounts when amount input changes
-          amountInput.addEventListener('input', function () {
-            if (instance && instance.updateConfiguration) {
-              try {
-                instance.updateConfiguration(
-                  'paypal',
-                  'amount',
-                  amountInput.value
+          // Create data collector instance for fraud prevention
+          braintree.dataCollector.create(
+            {
+              client: clientInstance,
+              paypal: true,
+              kount: true,
+            },
+            function (dataCollectorErr, dataCollector) {
+              if (dataCollectorErr) {
+                console.error(
+                  'Error creating data collector:',
+                  dataCollectorErr
                 );
-                instance.updateConfiguration(
-                  'paypalCredit',
-                  'amount',
-                  amountInput.value
-                );
-                instance.updateConfiguration('googlePay', {
-                  transactionInfo: {
-                    totalPriceStatus: 'FINAL',
-                    totalPrice: amountInput.value,
-                    currencyCode: 'USD',
-                  },
-                });
-              } catch (error) {
-                console.warn('Could not update payment method amounts:', error);
+                // Continue without device data collection
+              } else {
+                dataCollectorInstance = dataCollector;
+                console.log('Device data collection initialized');
               }
+
+              // Now create Drop-In instance
+              createDropInInstance(data.clientToken);
             }
-          });
-
-          // Handle button click
-          button.addEventListener('click', function () {
-            const amount = amountInput.value;
-
-            if (!amount || parseFloat(amount) <= 0) {
-              showResult('Please enter a valid amount.', 'error');
-              return;
-            }
-
-            // Show loading state
-            setLoadingState(true);
-
-            instance.requestPaymentMethod(function (
-              requestPaymentMethodErr,
-              payload
-            ) {
-              if (requestPaymentMethodErr) {
-                console.error('Payment method error:', requestPaymentMethodErr);
-                setLoadingState(false);
-
-                if (
-                  requestPaymentMethodErr.code ===
-                  'DROPIN_NO_PAYMENT_METHOD_SELECTED'
-                ) {
-                  showResult('Please select a payment method.', 'error');
-                } else if (
-                  requestPaymentMethodErr.code === 'VENMO_POPUP_CLOSED' ||
-                  requestPaymentMethodErr.code === 'VENMO_CANCELED'
-                ) {
-                  showResult('Venmo payment was cancelled.', 'error');
-                } else if (
-                  requestPaymentMethodErr.code === 'VENMO_APP_FAILED' ||
-                  requestPaymentMethodErr.message.includes('Venmo')
-                ) {
-                  showResult(
-                    'Venmo payment failed. Please try a different payment method.',
-                    'error'
-                  );
-                } else {
-                  showResult(
-                    'Payment failed: ' + requestPaymentMethodErr.message,
-                    'error'
-                  );
-                }
-                return;
-              }
-
-              // Debug: Log the payload to see what we received
-              console.log('Payment method payload:', payload);
-
-              // Only include billing address for credit card payments and only if provided by Drop-In
-              let requestData = {
-                paymentMethodNonce: payload.nonce,
-                amount: amount,
-                vaultPaymentMethod: true,
-              };
-
-              // Add billing address only for credit card payments and only if it exists in the payload
-              if (
-                payload.type === 'CreditCard' &&
-                payload.details &&
-                payload.details.billingAddress
-              ) {
-                requestData.billingAddress = payload.details.billingAddress;
-              }
-
-              // Send payment method nonce to server
-              fetch('/api/sale', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestData),
-              })
-                .then(response => response.json())
-                .then(function (result) {
-                  setLoadingState(false);
-
-                  if (result.success) {
-                    // Tear down the Drop-in UI instance
-                    instance.teardown(function (teardownErr) {
-                      if (teardownErr) {
-                        console.error(
-                          'Could not tear down Drop-in UI!',
-                          teardownErr
-                        );
-                      } else {
-                        console.info('Drop-in UI has been torn down!');
-                      }
-                    });
-
-                    showResult(
-                      'Payment successful! Transaction ID: ' +
-                        result.transaction.id,
-                      'success',
-                      formatPaymentResult(result, payload.type)
-                    );
-                  } else {
-                    console.log(result);
-                    showResult(
-                      'Payment failed: ' + (result.message || 'Unknown error'),
-                      'error',
-                      result.error
-                        ? JSON.stringify(result.error, null, 2)
-                        : null
-                    );
-                  }
-                })
-                .catch(function (error) {
-                  setLoadingState(false);
-                  console.error('Server error:', error);
-                  showResult(
-                    'Server error occurred. Please try again.',
-                    'error'
-                  );
-                });
-            });
-          });
+          );
         }
       );
     })
     .catch(error => {
-      console.error('Error getting client token:', error);
-      showResult(
-        'Error initializing payment system: ' + error.message,
-        'error'
-      );
+      console.error('Error fetching client token:', error);
+      showResult('Error connecting to server', 'error');
     });
+}
+
+function createDropInInstance(clientToken) {
+  braintree.dropin.create(
+    {
+      authorization: clientToken,
+      container: '#dropin-container',
+      vaultManager: true,
+      card: {
+        vault: {
+          vaultCard: true,
+        },
+        cardholderName: {
+          required: true,
+        },
+        billingAddress: {
+          required: true,
+        },
+        cvv: {
+          required: true,
+        },
+        postalCode: {
+          required: true,
+        },
+      },
+      paypal: {
+        flow: 'checkout',
+        amount: '30.00',
+        currency: 'USD',
+        enableShippingAddress: false,
+        buttonStyle: {
+          color: 'gold',
+          shape: 'rect',
+          size: 'responsive',
+        },
+      },
+      paypalCredit: {
+        flow: 'checkout',
+        amount: '30.00',
+        currency: 'USD',
+      },
+      venmo: {
+        allowDesktop: true,
+      },
+      googlePay: {
+        merchantId: 'your-merchant-id', // Replace with your actual merchant ID
+        transactionInfo: {
+          totalPriceStatus: 'FINAL',
+          totalPrice: '30.00',
+          currencyCode: 'USD',
+        },
+        allowedPaymentMethods: [
+          {
+            type: 'CARD',
+            parameters: {
+              allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
+              allowedCardNetworks: ['VISA', 'MASTERCARD', 'AMEX', 'DISCOVER'],
+            },
+          },
+        ],
+      },
+    },
+    function (createErr, instance) {
+      if (createErr) {
+        console.error('Error creating Drop-In:', createErr);
+        showResult(
+          'Error initializing payment form: ' + createErr.message,
+          'error'
+        );
+        return;
+      }
+
+      console.log('Drop-In initialized successfully');
+
+      // Enable submit button
+      button.disabled = false;
+
+      // Set initial amounts for PayPal and Google Pay
+      if (amountInput.value) {
+        try {
+          instance.updateConfiguration('paypal', 'amount', amountInput.value);
+          instance.updateConfiguration(
+            'paypalCredit',
+            'amount',
+            amountInput.value
+          );
+          instance.updateConfiguration('googlePay', {
+            transactionInfo: {
+              totalPriceStatus: 'FINAL',
+              totalPrice: amountInput.value,
+              currencyCode: 'USD',
+            },
+          });
+        } catch (error) {
+          console.warn('Could not set initial amounts:', error);
+        }
+      }
+
+      // Update PayPal and Google Pay amounts when amount input changes
+      amountInput.addEventListener('input', function () {
+        if (instance && instance.updateConfiguration) {
+          try {
+            instance.updateConfiguration('paypal', 'amount', amountInput.value);
+            instance.updateConfiguration(
+              'paypalCredit',
+              'amount',
+              amountInput.value
+            );
+            instance.updateConfiguration('googlePay', {
+              transactionInfo: {
+                totalPriceStatus: 'FINAL',
+                totalPrice: amountInput.value,
+                currencyCode: 'USD',
+              },
+            });
+          } catch (error) {
+            console.warn('Could not update payment method amounts:', error);
+          }
+        }
+      });
+
+      // Handle button click
+      button.addEventListener('click', function () {
+        const amount = amountInput.value;
+
+        if (!amount || parseFloat(amount) <= 0) {
+          showResult('Please enter a valid amount.', 'error');
+          return;
+        }
+
+        // Show loading state
+        setLoadingState(true);
+
+        instance.requestPaymentMethod(function (
+          requestPaymentMethodErr,
+          payload
+        ) {
+          if (requestPaymentMethodErr) {
+            console.error('Payment method error:', requestPaymentMethodErr);
+            setLoadingState(false);
+
+            if (
+              requestPaymentMethodErr.code ===
+              'DROPIN_NO_PAYMENT_METHOD_SELECTED'
+            ) {
+              showResult('Please select a payment method.', 'error');
+            } else if (
+              requestPaymentMethodErr.code === 'VENMO_POPUP_CLOSED' ||
+              requestPaymentMethodErr.code === 'VENMO_CANCELED'
+            ) {
+              showResult('Venmo payment was cancelled.', 'error');
+            } else if (
+              requestPaymentMethodErr.code === 'VENMO_APP_FAILED' ||
+              requestPaymentMethodErr.message.includes('Venmo')
+            ) {
+              showResult(
+                'Venmo payment failed. Please try a different payment method.',
+                'error'
+              );
+            } else {
+              showResult(
+                'Payment failed: ' + requestPaymentMethodErr.message,
+                'error'
+              );
+            }
+            return;
+          }
+
+          // Debug: Log the payload to see what we received
+          console.log('Payment method payload:', payload);
+
+          // Only include billing address for credit card payments and only if provided by Drop-In
+          let requestData = {
+            paymentMethodNonce: payload.nonce,
+            amount: amount,
+            vaultPaymentMethod: true,
+            deviceData: dataCollectorInstance
+              ? dataCollectorInstance.deviceData
+              : null,
+          };
+
+          // Add billing address only for credit card payments and only if it exists in the payload
+          if (
+            payload.type === 'CreditCard' &&
+            payload.details &&
+            payload.details.billingAddress
+          ) {
+            requestData.billingAddress = payload.details.billingAddress;
+          }
+
+          // Send payment method nonce to server
+          fetch('/api/sale', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData),
+          })
+            .then(response => response.json())
+            .then(function (result) {
+              setLoadingState(false);
+
+              if (result.success) {
+                // Tear down the Drop-in UI instance
+                instance.teardown(function (teardownErr) {
+                  if (teardownErr) {
+                    console.error(
+                      'Could not tear down Drop-in UI!',
+                      teardownErr
+                    );
+                  } else {
+                    console.info('Drop-in UI has been torn down!');
+                  }
+                });
+
+                showResult(
+                  'Payment successful! Transaction ID: ' +
+                    result.transaction.id,
+                  'success',
+                  formatPaymentResult(result, payload.type)
+                );
+              } else {
+                console.log(result);
+                showResult(
+                  'Payment failed: ' + (result.message || 'Unknown error'),
+                  'error',
+                  result.error ? JSON.stringify(result.error, null, 2) : null
+                );
+              }
+            })
+            .catch(function (error) {
+              setLoadingState(false);
+              console.error('Server error:', error);
+              showResult('Server error occurred. Please try again.', 'error');
+            });
+        });
+      });
+    }
+  );
 }
 
 // Format payment result for display

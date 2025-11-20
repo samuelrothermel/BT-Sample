@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Braintree Custom Checkout (with vaulting) Demo</title>
-    <link rel="stylesheet" href="vaulted-payments.css">
+    <title>Braintree Hosted Fields Vaulted Demo</title>
+    <link rel="stylesheet" href="hosted-vaulted.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Custom Vaulted Payments Demo</h1>
-            <p>Full Stack Integration supporting Payment Method Vaulting</p>
+            <h1>Hosted Fields Vaulted Demo</h1>
+            <p>Hosted Fields with ACH and Payment Method Vaulting</p>
             <a href="index.html" class="back-link">← Back to Samples</a>
         </header>
 
@@ -130,6 +130,47 @@
                     <span>or pay with</span>
                 </div>
 
+                <!-- ACH Bank Account Form -->
+                <div class="alternative-payment-method">
+                    <div class="ach-vault-info">
+                        <h3>Bank Account (ACH) with Vaulting</h3>
+                        <p>Pay directly from your bank account using US bank routing and account numbers. Your bank account will be securely saved for future payments.</p>
+                    </div>
+                    <form id="ach-form" class="ach-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="bank-routing-number">Bank Routing Number</label>
+                                <input type="text" id="bank-routing-number" placeholder="021000021" maxlength="9" pattern="[0-9]{9}" title="9-digit routing number" required>
+                                <small class="field-note">9 digits, found on the bottom of your check</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="bank-account-number">Bank Account Number</label>
+                                <input type="text" id="bank-account-number" placeholder="1234567890" maxlength="20" title="Your bank account number" required>
+                                <small class="field-note">Account number from your bank statement</small>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="bank-account-type">Account Type</label>
+                                <select id="bank-account-type" required>
+                                    <option value="">Select Account Type</option>
+                                    <option value="checking">Checking</option>
+                                    <option value="savings">Savings</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="bank-account-holder-name">Account Holder Name</label>
+                                <input type="text" id="bank-account-holder-name" placeholder="John Doe" value="John Doe" required>
+                                <small class="field-note">Name on the bank account</small>
+                            </div>
+                        </div>
+                        <button type="submit" id="ach-submit-button" class="ach-submit-button">
+                            <span class="button-text">Pay with Bank Account & Save</span>
+                            <span class="loading-spinner" style="display: none;">Processing...</span>
+                        </button>
+                    </form>
+                </div>
+
                 <!-- PayPal Vault Button -->
                 <div class="alternative-payment-method">
                     <div class="paypal-vault-info">
@@ -182,8 +223,9 @@
     <script src="https://js.braintreegateway.com/web/3.97.2/js/venmo.min.js"></script>
     <script src="https://js.braintreegateway.com/web/3.97.2/js/google-payment.min.js"></script>
     <script src="https://js.braintreegateway.com/web/3.97.2/js/apple-pay.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.97.2/js/data-collector.min.js"></script>
     
     <!-- Custom JavaScript -->
-    <script src="vaulted-payments.js"></script>
+    <script src="hosted-vaulted.js"></script>
 </body>
 </html>
