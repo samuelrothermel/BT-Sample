@@ -29,25 +29,36 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Apple Pay domain association file
-app.get(
-  '/.well-known/apple-developer-merchantid-domain-association',
-  (req, res) => {
-    res.sendFile(
-      path.join(
-        __dirname,
-        'public',
-        '.well-known',
-        'apple-developer-merchantid-domain-association'
-      )
-    );
-  }
-);
+// Apple Pay domain association file - TEMPORARILY DISABLED FOR TESTING
+// app.get(
+//   '/.well-known/apple-developer-merchantid-domain-association',
+//   (req, res) => {
+//     res.sendFile(
+//       path.join(
+//         __dirname,
+//         'public',
+//         '.well-known',
+//         'apple-developer-merchantid-domain-association'
+//       )
+//     );
+//   }
+// );
 
 // Generate client token for Braintree
 app.get('/client_token', async (req, res) => {
   try {
-    const response = await gateway.clientToken.generate({});
+    const tokenConfig = {};
+
+    // If merchant account ID is provided, include it in the token generation
+    if (req.query.merchantAccountId) {
+      tokenConfig.merchantAccountId = req.query.merchantAccountId;
+      console.log(
+        'Generating client token for merchant account:',
+        req.query.merchantAccountId
+      );
+    }
+
+    const response = await gateway.clientToken.generate(tokenConfig);
     res.json({ clientToken: response.clientToken });
   } catch (error) {
     console.error('Error generating client token:', error);
@@ -67,6 +78,7 @@ app.post('/api/sale', async (req, res) => {
     bankAccount,
     vault,
     options,
+    merchantAccountId,
   } = req.body;
 
   if (!paymentMethodNonce && !bankAccount) {
@@ -86,6 +98,15 @@ app.post('/api/sale', async (req, res) => {
         submitForSettlement: true,
       },
     };
+
+    // Add merchant account ID if provided (for multi-currency support)
+    if (merchantAccountId) {
+      transactionData.merchantAccountId = merchantAccountId;
+      console.log(
+        'Processing transaction with merchant account:',
+        merchantAccountId
+      );
+    }
 
     // Handle different payment methods
     if (paymentMethodNonce) {
