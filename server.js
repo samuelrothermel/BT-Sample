@@ -29,20 +29,20 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Apple Pay domain association file - TEMPORARILY DISABLED FOR TESTING
-// app.get(
-//   '/.well-known/apple-developer-merchantid-domain-association',
-//   (req, res) => {
-//     res.sendFile(
-//       path.join(
-//         __dirname,
-//         'public',
-//         '.well-known',
-//         'apple-developer-merchantid-domain-association'
-//       )
-//     );
-//   }
-// );
+// Serve Apple Pay domain association file
+app.get(
+  '/.well-known/apple-developer-merchantid-domain-association',
+  (req, res) => {
+    res.sendFile(
+      path.join(
+        __dirname,
+        'public',
+        '.well-known',
+        'apple-developer-merchantid-domain-association'
+      )
+    );
+  }
+);
 
 // Generate client token for Braintree
 app.get('/client_token', async (req, res) => {
