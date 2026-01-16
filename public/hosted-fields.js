@@ -5,6 +5,16 @@ const amountInput = document.getElementById('amount');
 const resultDiv = document.getElementById('result');
 const vaultCheckbox = document.getElementById('vault-payment-method');
 
+// ACH form elements
+const achForm = document.getElementById('ach-form');
+const achSubmitButton = document.getElementById('ach-submit-button');
+const bankRoutingNumberInput = document.getElementById('bank-routing-number');
+const bankAccountNumberInput = document.getElementById('bank-account-number');
+const bankAccountTypeInput = document.getElementById('bank-account-type');
+const bankAccountHolderNameInput = document.getElementById(
+  'bank-account-holder-name'
+);
+
 let hostedFieldsInstance;
 let paypalCheckoutInstance;
 let venmoInstance;
@@ -23,6 +33,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (clientInstance) {
           initializePayPal(clientInstance);
         }
+      });
+    }
+
+    // Set up ACH form submission
+    if (achForm) {
+      achForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        await processACHPayment();
       });
     }
   } catch (error) {
@@ -654,5 +672,113 @@ async function processPayment(nonce, amount) {
   } catch (error) {
     console.error('Payment error:', error);
     showResult('Payment processing failed. Please try again.', 'error');
+  }
+}
+
+// Process ACH payment
+async function processACHPayment() {
+  const routingNumber = bankRoutingNumberInput.value.trim();
+  const accountNumber = bankAccountNumberInput.value.trim();
+  const accountType = bankAccountTypeInput.value;
+  const accountHolderName = bankAccountHolderNameInput.value.trim();
+  const amount = amountInput.value;
+
+  // Validate ACH form
+  if (
+    !routingNumber ||
+    !accountNumber ||
+    !accountType ||
+    !accountHolderName ||
+    !amount
+  ) {
+    showResult('Please fill in all required fields.', 'error');
+    return;
+  }
+
+  if (routingNumber.length !== 9 || !/^\d{9}$/.test(routingNumber)) {
+    showResult('Please enter a valid 9-digit routing number.', 'error');
+    return;
+  }
+
+  if (parseFloat(amount) <= 0) {
+    showResult('Please enter a valid amount greater than $0.00', 'error');
+    return;
+  }
+
+  // Show loading state
+  setACHLoadingState(true);
+
+  try {
+    // Create bank account payload
+    const bankAccountData = {
+      type: 'us_bank_account',
+      routingNumber: routingNumber,
+      accountNumber: accountNumber,
+      accountType: accountType,
+      ownershipType: 'personal',
+      billingAddress: {
+        firstName: accountHolderName.split(' ')[0] || '',
+        lastName: accountHolderName.split(' ').slice(1).join(' ') || '',
+      },
+    };
+
+    // Send to server for processing (ACH is simulated in demo)
+    const response = await fetch('/api/sale', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        amount: amount,
+        bankAccount: bankAccountData,
+        vaultPaymentMethod: vaultCheckbox.checked,
+        deviceData: dataCollectorInstance
+          ? dataCollectorInstance.deviceData
+          : null,
+      }),
+    });
+
+    const result = await response.json();
+    console.log('ACH payment response:', result);
+
+    if (result.success) {
+      let successMessage = `ACH Payment successful! Transaction ID: ${result.transaction.id}. Amount: $${result.transaction.amount}`;
+
+      if (result.transaction.usBankAccount) {
+        successMessage += `<br><br>Bank Account: ****${result.transaction.usBankAccount.last4}`;
+        successMessage += `<br>Account Type: ${result.transaction.usBankAccount.accountType}`;
+
+        if (result.transaction.usBankAccount.token) {
+          successMessage += `<br>Payment Method Token: ${result.transaction.usBankAccount.token}`;
+        }
+      }
+
+      showResult(successMessage, 'success');
+
+      // Reset ACH form
+      achForm.reset();
+      amountInput.value = '10.00';
+    } else {
+      showResult(`ACH Payment failed: ${result.error}`, 'error');
+    }
+  } catch (error) {
+    console.error('ACH payment error:', error);
+    showResult('ACH payment processing failed. Please try again.', 'error');
+  } finally {
+    setACHLoadingState(false);
+  }
+}
+
+// Set ACH loading state
+function setACHLoadingState(loading) {
+  if (achSubmitButton) {
+    achSubmitButton.disabled = loading;
+    const buttonText = achSubmitButton.querySelector('.button-text');
+    const spinner = achSubmitButton.querySelector('.loading-spinner');
+
+    if (buttonText && spinner) {
+      buttonText.style.display = loading ? 'none' : 'inline';
+      spinner.style.display = loading ? 'inline' : 'none';
+    }
   }
 }

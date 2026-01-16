@@ -100,6 +100,45 @@
                     <div id="venmo-button" class="payment-button-container"></div>
                 </div>
 
+                <!-- ACH Bank Account Form -->
+                <div class="alternative-payment-method">
+                    <h3>Bank Account (ACH)</h3>
+                    <p>Pay directly from your bank account using US bank routing and account numbers.</p>
+                    <form id="ach-form" class="ach-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="bank-routing-number">Bank Routing Number</label>
+                                <input type="text" id="bank-routing-number" placeholder="021000021" maxlength="9" pattern="[0-9]{9}" title="9-digit routing number" required>
+                                <small class="field-note">9 digits, found on the bottom of your check</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="bank-account-number">Bank Account Number</label>
+                                <input type="text" id="bank-account-number" placeholder="1234567890" maxlength="20" title="Your bank account number" required>
+                                <small class="field-note">Account number from your bank statement</small>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="bank-account-type">Account Type</label>
+                                <select id="bank-account-type" required>
+                                    <option value="">Select Account Type</option>
+                                    <option value="checking">Checking</option>
+                                    <option value="savings">Savings</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="bank-account-holder-name">Account Holder Name</label>
+                                <input type="text" id="bank-account-holder-name" placeholder="John Doe" value="John Doe" required>
+                                <small class="field-note">Name on the bank account</small>
+                            </div>
+                        </div>
+                        <button type="submit" id="ach-submit-button" class="ach-submit-button">
+                            <span class="button-text">Pay with Bank Account</span>
+                            <span class="loading-spinner" style="display: none;">Processing...</span>
+                        </button>
+                    </form>
+                </div>
+
                 <!-- Results -->
                 <div id="result" class="result"></div>
             </div>
@@ -111,6 +150,7 @@
     <script src="https://js.braintreegateway.com/web/3.97.2/js/hosted-fields.min.js"></script>
     <script src="https://js.braintreegateway.com/web/3.97.2/js/paypal-checkout.min.js"></script>
     <script src="https://js.braintreegateway.com/web/3.97.2/js/venmo.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.97.2/js/us-bank-account.min.js"></script>
     <script src="https://js.braintreegateway.com/web/3.97.2/js/data-collector.min.js"></script>
     
     <!-- Custom JavaScript -->

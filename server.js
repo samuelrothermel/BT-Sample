@@ -66,6 +66,175 @@ app.get('/client_token', async (req, res) => {
   }
 });
 
+// Vault ACH payment method and process transaction
+app.post('/api/ach-sale', async (req, res) => {
+  const { paymentMethodNonce, amount, accountHolderName } = req.body;
+
+  if (!paymentMethodNonce) {
+    return res.status(400).json({ error: 'Payment method nonce is required' });
+  }
+
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    return res.status(400).json({ error: 'Valid amount is required' });
+  }
+
+  try {
+    console.log(
+      'Step 1: Creating customer and vaulting payment method with network check verification...'
+    );
+
+    // Step 1: Create a customer
+    const customerResult = await gateway.customer.create({
+      firstName: accountHolderName?.split(' ')[0] || 'Bank Account',
+      lastName: accountHolderName?.split(' ').slice(1).join(' ') || 'Customer',
+    });
+
+    if (!customerResult.success) {
+      console.error('Customer creation failed:', customerResult.message);
+      return res.status(400).json({
+        success: false,
+        error: customerResult.message,
+      });
+    }
+
+    const customerId = customerResult.customer.id;
+    console.log('Customer created:', customerId);
+
+    // Step 2: Create payment method with network check verification
+    console.log(
+      'Step 2: Vaulting payment method with network check verification...'
+    );
+
+    let paymentMethodResult;
+    try {
+      paymentMethodResult = await gateway.paymentMethod.create({
+        customerId: customerId,
+        paymentMethodNonce: paymentMethodNonce,
+        options: {
+          usBankAccountVerificationMethod:
+            braintree.UsBankAccountVerification.VerificationMethod.NetworkCheck,
+        },
+      });
+    } catch (verificationError) {
+      console.error(
+        'Network check verification failed:',
+        verificationError.message
+      );
+      console.log(
+        'Falling back to creating payment method without verification...'
+      );
+
+      // Fallback: Create payment method without verification
+      // Note: This will require micro-deposit verification in production
+      paymentMethodResult = await gateway.paymentMethod.create({
+        customerId: customerId,
+        paymentMethodNonce: paymentMethodNonce,
+      });
+    }
+
+    if (!paymentMethodResult.success) {
+      console.error(
+        'Payment method creation failed:',
+        paymentMethodResult.message
+      );
+      console.error(
+        'Full error:',
+        JSON.stringify(paymentMethodResult, null, 2)
+      );
+      return res.status(400).json({
+        success: false,
+        error: paymentMethodResult.message,
+      });
+    }
+
+    const paymentMethodToken = paymentMethodResult.paymentMethod.token;
+    console.log('Payment method vaulted with token:', paymentMethodToken);
+    console.log(
+      'Full payment method result:',
+      JSON.stringify(paymentMethodResult.paymentMethod, null, 2)
+    );
+
+    // Check verification status
+    const verification = paymentMethodResult.paymentMethod.verifications?.[0];
+    if (verification) {
+      console.log('Verification found:', JSON.stringify(verification, null, 2));
+      console.log('Verification status:', verification.status);
+      if (verification.status !== 'verified') {
+        console.error(
+          `Verification failed with status: ${verification.status}`
+        );
+        return res.status(400).json({
+          success: false,
+          error: `Bank account verification failed: ${verification.status}`,
+        });
+      }
+      console.log('✓ Bank account verified successfully');
+    } else {
+      console.warn('No verification object found in response');
+    }
+
+    // Step 3: Process transaction using the verified payment method token
+    console.log(
+      'Step 3: Processing transaction from verified payment method...'
+    );
+
+    const transactionResult = await gateway.transaction.sale({
+      amount: parseFloat(amount).toFixed(2),
+      paymentMethodToken: paymentMethodToken,
+      options: {
+        submitForSettlement: true,
+      },
+    });
+
+    if (transactionResult.success) {
+      console.log('Transaction successful:', transactionResult.transaction.id);
+      console.log(
+        'Full transaction result:',
+        JSON.stringify(transactionResult.transaction, null, 2)
+      );
+
+      const response = {
+        success: true,
+        transaction: {
+          id: transactionResult.transaction.id,
+          status: transactionResult.transaction.status,
+          amount: transactionResult.transaction.amount,
+          usBankAccount: transactionResult.transaction.usBankAccount,
+        },
+        vaultedPaymentMethod: {
+          token: paymentMethodToken,
+          customerId: customerId,
+          last4: transactionResult.transaction.usBankAccount?.last4,
+          accountType: transactionResult.transaction.usBankAccount?.accountType,
+          bankName: transactionResult.transaction.usBankAccount?.bankName,
+          accountHolderName:
+            transactionResult.transaction.usBankAccount?.accountHolderName,
+          paymentType: 'US Bank Account',
+        },
+      };
+
+      res.json(response);
+    } else {
+      console.error('Transaction failed:', transactionResult.message);
+      res.status(400).json({
+        success: false,
+        error: transactionResult.message,
+      });
+    }
+  } catch (error) {
+    console.error('Error processing ACH payment:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process ACH payment: ' + error.message,
+    });
+  }
+});
+
 // Process payment
 app.post('/api/sale', async (req, res) => {
   const {
@@ -112,27 +281,12 @@ app.post('/api/sale', async (req, res) => {
     if (paymentMethodNonce) {
       transactionData.paymentMethodNonce = paymentMethodNonce;
     } else if (bankAccount) {
-      // For demo purposes, simulate ACH payment processing
-      // In production, you would use Braintree's ACH processing
-      return res.status(200).json({
-        success: true,
-        message: 'ACH payment processed successfully',
-        transaction: {
-          id: 'ach_demo_' + Math.random().toString(36).substr(2, 9),
-          amount: amount,
-          status: 'submitted_for_settlement',
-          paymentInstrumentType: 'us_bank_account',
-          customer: {
-            id: 'customer_' + Math.random().toString(36).substr(2, 9),
-          },
-          usBankAccount: {
-            token: 'bank_' + Math.random().toString(36).substr(2, 9),
-            last4: bankAccount.accountNumber.slice(-4),
-            accountType: bankAccount.accountType,
-            bankName: 'Demo Bank',
-            routingNumber: bankAccount.routingNumber.substr(0, 4) + '*****',
-          },
-        },
+      // ACH payments require tokenization on the client side
+      // This fallback shouldn't be hit with proper client implementation
+      return res.status(400).json({
+        success: false,
+        error:
+          'ACH payments must be tokenized on the client side. Please use the US Bank Account SDK to generate a payment method nonce.',
       });
     }
 
@@ -276,6 +430,29 @@ app.post('/api/sale', async (req, res) => {
         if (result.transaction.customer) {
           console.log('Customer ID:', result.transaction.customer.id);
         }
+      } else if (
+        result.transaction.usBankAccount &&
+        result.transaction.usBankAccount.token
+      ) {
+        // Handle vaulted US Bank Accounts (ACH)
+        response.vaultedPaymentMethod = {
+          token: result.transaction.usBankAccount.token,
+          last4: result.transaction.usBankAccount.last4,
+          accountType: result.transaction.usBankAccount.accountType,
+          accountHolderName: result.transaction.usBankAccount.accountHolderName,
+          bankName: result.transaction.usBankAccount.bankName,
+          paymentType: 'US Bank Account',
+          customerId: result.transaction.customer
+            ? result.transaction.customer.id
+            : null,
+        };
+        console.log(
+          'US Bank Account vaulted with token:',
+          result.transaction.usBankAccount.token
+        );
+        if (result.transaction.customer) {
+          console.log('Customer ID:', result.transaction.customer.id);
+        }
       }
 
       res.json(response);
@@ -291,6 +468,116 @@ app.post('/api/sale', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to process payment',
+    });
+  }
+});
+
+// Vault test endpoint - for testing duplicate payment method scenarios
+app.post('/api/vault-test', async (req, res) => {
+  const {
+    paymentMethodNonce,
+    amount,
+    cardholderName,
+    existingCustomerId,
+    deviceData,
+  } = req.body;
+
+  if (!paymentMethodNonce) {
+    return res.status(400).json({ error: 'Payment method nonce is required' });
+  }
+
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    return res.status(400).json({ error: 'Valid amount is required' });
+  }
+
+  try {
+    let customerId = existingCustomerId;
+
+    // If no existing customer ID, create a new customer
+    if (!customerId) {
+      console.log('Creating new customer for vault test...');
+      const customerResult = await gateway.customer.create({
+        firstName: cardholderName || 'Test',
+        lastName: 'Customer',
+      });
+
+      if (!customerResult.success) {
+        console.error('Customer creation failed:', customerResult.message);
+        return res.status(400).json({
+          success: false,
+          error: customerResult.message,
+        });
+      }
+
+      customerId = customerResult.customer.id;
+      console.log('New customer created:', customerId);
+    } else {
+      console.log('Using existing customer ID:', customerId);
+    }
+
+    // Create transaction with vaulting
+    const transactionData = {
+      amount: parseFloat(amount).toFixed(2),
+      paymentMethodNonce: paymentMethodNonce,
+      customer: {
+        id: customerId,
+      },
+      options: {
+        submitForSettlement: true,
+        storeInVaultOnSuccess: true,
+      },
+    };
+
+    if (deviceData) {
+      transactionData.deviceData = deviceData;
+    }
+
+    console.log('Processing vault test transaction...');
+    const result = await gateway.transaction.sale(transactionData);
+
+    if (result.success) {
+      console.log('Vault test transaction successful:', result.transaction.id);
+
+      const response = {
+        success: true,
+        transaction: {
+          id: result.transaction.id,
+          status: result.transaction.status,
+          amount: result.transaction.amount,
+        },
+        customerId: customerId,
+      };
+
+      // Include vault information
+      if (
+        result.transaction.creditCard &&
+        result.transaction.creditCard.token
+      ) {
+        response.vaultedPaymentMethod = {
+          token: result.transaction.creditCard.token,
+          maskedNumber: result.transaction.creditCard.maskedNumber,
+          cardType: result.transaction.creditCard.cardType,
+          customerId: customerId,
+        };
+        console.log(
+          'Payment method vaulted with token:',
+          result.transaction.creditCard.token
+        );
+      }
+
+      res.json(response);
+    } else {
+      console.error('Vault test transaction failed:', result.message);
+      res.status(400).json({
+        success: false,
+        error: result.message,
+      });
+    }
+  } catch (error) {
+    console.error('Error in vault test:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process vault test: ' + error.message,
     });
   }
 });

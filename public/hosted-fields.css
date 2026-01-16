@@ -453,3 +453,86 @@ input[type='number']:focus {
   margin-top: 4px;
   line-height: 1.4;
 }
+
+/* ACH Form Styles */
+.ach-form {
+  margin-top: 15px;
+}
+
+.ach-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.ach-form .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.ach-form label {
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: #333;
+  font-size: 14px;
+}
+
+.ach-form input,
+.ach-form select {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.ach-form input:focus,
+.ach-form select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.ach-form .field-note {
+  display: block;
+  color: #666;
+  font-size: 12px;
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+.ach-submit-button {
+  width: 100%;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.ach-submit-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.ach-submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ach-submit-button .loading-spinner {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .ach-form .form-row {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+}
