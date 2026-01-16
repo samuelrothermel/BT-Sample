@@ -20,14 +20,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initializeBraintree();
     loadHistoryFromStorage();
     updateInsights();
+    setupStrategyToggle();
   } catch (error) {
     console.error('Failed to initialize Braintree:', error);
     showResult(
       'Failed to initialize payment system. Please refresh the page.',
-      'error'
+      'error',
     );
   }
 });
+
+// Setup strategy toggle to show/hide customer ID input
+function setupStrategyToggle() {
+  const strategyRadios = document.querySelectorAll(
+    'input[name="customer-strategy"]',
+  );
+  const customerIdGroup = document.getElementById('customer-id-group');
+
+  strategyRadios.forEach(radio => {
+    radio.addEventListener('change', function () {
+      if (this.value === 'same') {
+        customerIdGroup.style.display = 'block';
+      } else {
+        customerIdGroup.style.display = 'none';
+      }
+    });
+  });
+
+  // Set initial state
+  const selectedStrategy = document.querySelector(
+    'input[name="customer-strategy"]:checked',
+  ).value;
+  if (selectedStrategy === 'new') {
+    customerIdGroup.style.display = 'none';
+  }
+}
 
 // Initialize Braintree Client and Hosted Fields
 async function initializeBraintree() {
@@ -112,7 +139,7 @@ form.addEventListener('submit', async event => {
   if (!hostedFieldsInstance) {
     showResult(
       'Payment system not initialized. Please refresh the page.',
-      'error'
+      'error',
     );
     return;
   }
@@ -125,9 +152,9 @@ form.addEventListener('submit', async event => {
 
   // Get customer strategy
   const customerStrategy = document.querySelector(
-    'input[name="customer-strategy"]:checked'
+    'input[name="customer-strategy"]:checked',
   ).value;
-  const useExistingCustomer = customerStrategy === 'same';
+  const useSpecifiedCustomer = customerStrategy === 'same';
 
   // Disable form and show loading state
   setLoading(true);
@@ -142,23 +169,17 @@ form.addEventListener('submit', async event => {
 
     // Determine customer ID to use
     let targetCustomerId;
-    if (useExistingCustomer) {
+    if (useSpecifiedCustomer) {
       targetCustomerId = customerIdInput.value.trim() || null;
-      // If no customer ID provided and we're using "same customer" mode,
-      // use the first customer ID from history (if available)
-      if (!targetCustomerId && vaultHistory.length > 0) {
-        const firstSuccessfulVault = vaultHistory.find(
-          item => item.success && item.customerId
-        );
-        if (firstSuccessfulVault) {
-          targetCustomerId = firstSuccessfulVault.customerId;
-          customerIdInput.value = targetCustomerId;
-          console.log('Using existing customer ID:', targetCustomerId);
-        }
+      if (targetCustomerId) {
+        console.log('Will use/create customer with ID:', targetCustomerId);
+      } else {
+        console.log('No customer ID specified - will auto-generate');
       }
     } else {
-      // Always create new customer
+      // Always create new customer with auto-generated ID
       targetCustomerId = null;
+      console.log('Strategy: Generate new customer ID');
     }
 
     // Create request data
@@ -195,7 +216,7 @@ form.addEventListener('submit', async event => {
       amount: amount,
       cardLast4: details.lastFour || 'N/A',
       cardType: details.cardType || 'N/A',
-      strategy: useExistingCustomer ? 'Same Customer' : 'New Customer',
+      strategy: useSpecifiedCustomer ? 'Specified Customer' : 'New Customer',
       customerId: result.customerId || targetCustomerId || 'N/A',
       paymentMethodToken: result.vaultedPaymentMethod
         ? result.vaultedPaymentMethod.token
@@ -231,8 +252,8 @@ form.addEventListener('submit', async event => {
 
       showResult(successMessage, 'success');
 
-      // Update customer ID field for next test
-      if (useExistingCustomer && result.customerId) {
+      // Update customer ID field for next test if using specified customer strategy
+      if (useSpecifiedCustomer && result.customerId && !customerIdInput.value) {
         customerIdInput.value = result.customerId;
       }
     } else {
@@ -245,7 +266,7 @@ form.addEventListener('submit', async event => {
       timestamp: new Date().toISOString(),
       success: false,
       error: error.message || 'Unknown error',
-      strategy: useExistingCustomer ? 'Same Customer' : 'New Customer',
+      strategy: useSpecifiedCustomer ? 'Specified Customer' : 'New Customer',
     };
 
     vaultHistory.unshift(historyItem);
@@ -276,7 +297,7 @@ function checkForDuplicate(newItem) {
       item.cardLast4 === newItem.cardLast4 &&
       item.customerId === newItem.customerId &&
       item.customerId !== 'N/A' &&
-      item.timestamp !== newItem.timestamp
+      item.timestamp !== newItem.timestamp,
   );
 
   return sameCustomerDuplicate;
@@ -369,7 +390,7 @@ function updateInsights() {
     .size;
   const totalTokens = successfulVaults.length;
   const duplicateCount = successfulVaults.filter(
-    item => item.isDuplicate
+    item => item.isDuplicate,
   ).length;
 
   // Group by customer
@@ -450,7 +471,7 @@ function updateInsights() {
 clearHistoryBtn.addEventListener('click', () => {
   if (
     confirm(
-      'Are you sure you want to clear all vault history? This cannot be undone.'
+      'Are you sure you want to clear all vault history? This cannot be undone.',
     )
   ) {
     vaultHistory = [];

@@ -20,8 +20,8 @@
 
         <div class="info-box">
             <h3>📋 Testing Scenarios</h3>
-            <p><strong>Scenario 1:</strong> Vault the same card to the <strong>same Customer ID</strong> multiple times</p>
-            <p><strong>Scenario 2:</strong> Vault the same card with <strong>different Customer IDs</strong> (auto-generated)</p>
+            <p><strong>Scenario 1:</strong> Vault payment methods to a <strong>specific Customer ID</strong> (creates customer if not exists, adds to existing if found)</p>
+            <p><strong>Scenario 2:</strong> Vault payment methods with <strong>auto-generated Customer IDs</strong> (creates new customer each time)</p>
             <p><strong>Goal:</strong> Understand if Braintree prevents duplicates, updates existing tokens, or creates new ones</p>
         </div>
 
@@ -69,17 +69,20 @@
                         <h4>Customer ID Strategy:</h4>
                         <label class="radio-option">
                             <input type="radio" name="customer-strategy" value="same" checked>
-                            <span>Use Same Customer ID (Test for duplicates on same customer)</span>
+                            <span>Use Specified Customer ID (creates if not exists, adds payment method if exists)</span>
                         </label>
                         <label class="radio-option">
                             <input type="radio" name="customer-strategy" value="new">
-                            <span>Generate New Customer ID (Test for duplicates across customers)</span>
+                            <span>Generate New Customer ID Each Time (test duplicates across customers)</span>
                         </label>
                     </div>
 
-                    <div class="form-group">
-                        <label for="customer-id">Customer ID (for "Same Customer" mode)</label>
-                        <input type="text" id="customer-id" placeholder="Leave empty to auto-generate on first vault">
+                    <div class="form-group" id="customer-id-group">
+                        <label for="customer-id">Customer ID (for "Specified Customer ID" mode)</label>
+                        <input type="text" id="customer-id" placeholder="e.g., test_customer_123">
+                        <small style="color: #666; font-size: 0.875rem; margin-top: 4px; display: block;">
+                            💡 Enter a customer ID to use/create. If this customer exists, the payment method will be added to it. If not, a new customer with this ID will be created.
+                        </small>
                     </div>
                 </div>
 

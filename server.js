@@ -38,10 +38,10 @@ app.get(
         __dirname,
         'public',
         '.well-known',
-        'apple-developer-merchantid-domain-association'
-      )
+        'apple-developer-merchantid-domain-association',
+      ),
     );
-  }
+  },
 );
 
 // Generate client token for Braintree
@@ -54,7 +54,7 @@ app.get('/client_token', async (req, res) => {
       tokenConfig.merchantAccountId = req.query.merchantAccountId;
       console.log(
         'Generating client token for merchant account:',
-        req.query.merchantAccountId
+        req.query.merchantAccountId,
       );
     }
 
@@ -80,7 +80,7 @@ app.post('/api/ach-sale', async (req, res) => {
 
   try {
     console.log(
-      'Step 1: Creating customer and vaulting payment method with network check verification...'
+      'Step 1: Creating customer and vaulting payment method with network check verification...',
     );
 
     // Step 1: Create a customer
@@ -102,7 +102,7 @@ app.post('/api/ach-sale', async (req, res) => {
 
     // Step 2: Create payment method with network check verification
     console.log(
-      'Step 2: Vaulting payment method with network check verification...'
+      'Step 2: Vaulting payment method with network check verification...',
     );
 
     let paymentMethodResult;
@@ -118,10 +118,10 @@ app.post('/api/ach-sale', async (req, res) => {
     } catch (verificationError) {
       console.error(
         'Network check verification failed:',
-        verificationError.message
+        verificationError.message,
       );
       console.log(
-        'Falling back to creating payment method without verification...'
+        'Falling back to creating payment method without verification...',
       );
 
       // Fallback: Create payment method without verification
@@ -135,11 +135,11 @@ app.post('/api/ach-sale', async (req, res) => {
     if (!paymentMethodResult.success) {
       console.error(
         'Payment method creation failed:',
-        paymentMethodResult.message
+        paymentMethodResult.message,
       );
       console.error(
         'Full error:',
-        JSON.stringify(paymentMethodResult, null, 2)
+        JSON.stringify(paymentMethodResult, null, 2),
       );
       return res.status(400).json({
         success: false,
@@ -151,7 +151,7 @@ app.post('/api/ach-sale', async (req, res) => {
     console.log('Payment method vaulted with token:', paymentMethodToken);
     console.log(
       'Full payment method result:',
-      JSON.stringify(paymentMethodResult.paymentMethod, null, 2)
+      JSON.stringify(paymentMethodResult.paymentMethod, null, 2),
     );
 
     // Check verification status
@@ -161,7 +161,7 @@ app.post('/api/ach-sale', async (req, res) => {
       console.log('Verification status:', verification.status);
       if (verification.status !== 'verified') {
         console.error(
-          `Verification failed with status: ${verification.status}`
+          `Verification failed with status: ${verification.status}`,
         );
         return res.status(400).json({
           success: false,
@@ -175,7 +175,7 @@ app.post('/api/ach-sale', async (req, res) => {
 
     // Step 3: Process transaction using the verified payment method token
     console.log(
-      'Step 3: Processing transaction from verified payment method...'
+      'Step 3: Processing transaction from verified payment method...',
     );
 
     const transactionResult = await gateway.transaction.sale({
@@ -190,7 +190,7 @@ app.post('/api/ach-sale', async (req, res) => {
       console.log('Transaction successful:', transactionResult.transaction.id);
       console.log(
         'Full transaction result:',
-        JSON.stringify(transactionResult.transaction, null, 2)
+        JSON.stringify(transactionResult.transaction, null, 2),
       );
 
       const response = {
@@ -273,7 +273,7 @@ app.post('/api/sale', async (req, res) => {
       transactionData.merchantAccountId = merchantAccountId;
       console.log(
         'Processing transaction with merchant account:',
-        merchantAccountId
+        merchantAccountId,
       );
     }
 
@@ -326,7 +326,7 @@ app.post('/api/sale', async (req, res) => {
       console.log('Transaction successful:', result.transaction.id);
       console.log(
         'Full transaction result:',
-        JSON.stringify(result.transaction, null, 2)
+        JSON.stringify(result.transaction, null, 2),
       );
 
       const response = {
@@ -355,7 +355,7 @@ app.post('/api/sale', async (req, res) => {
         };
         console.log(
           'Payment method vaulted with token:',
-          result.transaction.creditCard.token
+          result.transaction.creditCard.token,
         );
         if (result.transaction.customer) {
           console.log('Customer ID:', result.transaction.customer.id);
@@ -366,7 +366,7 @@ app.post('/api/sale', async (req, res) => {
 
         console.log(
           'PayPal transaction details:',
-          JSON.stringify(result.transaction.paypal, null, 2)
+          JSON.stringify(result.transaction.paypal, null, 2),
         );
 
         // Check for implicitly vaulted payment method (from Checkout with Vault flow)
@@ -404,7 +404,7 @@ app.post('/api/sale', async (req, res) => {
         };
         console.log(
           'Venmo account vaulted with token:',
-          result.transaction.venmoAccount.token
+          result.transaction.venmoAccount.token,
         );
         if (result.transaction.customer) {
           console.log('Customer ID:', result.transaction.customer.id);
@@ -425,7 +425,7 @@ app.post('/api/sale', async (req, res) => {
         };
         console.log(
           'Google Pay account vaulted with token:',
-          result.transaction.androidPayCard.token
+          result.transaction.androidPayCard.token,
         );
         if (result.transaction.customer) {
           console.log('Customer ID:', result.transaction.customer.id);
@@ -448,7 +448,7 @@ app.post('/api/sale', async (req, res) => {
         };
         console.log(
           'US Bank Account vaulted with token:',
-          result.transaction.usBankAccount.token
+          result.transaction.usBankAccount.token,
         );
         if (result.transaction.customer) {
           console.log('Customer ID:', result.transaction.customer.id);
@@ -492,14 +492,45 @@ app.post('/api/vault-test', async (req, res) => {
 
   try {
     let customerId = existingCustomerId;
+    let customerExists = false;
 
-    // If no existing customer ID, create a new customer
-    if (!customerId) {
+    // If customer ID is provided, check if it exists
+    if (customerId) {
+      console.log('Checking if customer exists:', customerId);
+      try {
+        const customerResult = await gateway.customer.find(customerId);
+        customerExists = true;
+        customerId = customerResult.id; // Ensure we use the exact ID from Braintree
+        console.log('✓ Customer found:', customerId);
+        console.log('Customer details:', {
+          id: customerResult.id,
+          firstName: customerResult.firstName,
+          lastName: customerResult.lastName,
+          paymentMethodCount: customerResult.paymentMethods?.length || 0,
+        });
+      } catch (findError) {
+        console.log(
+          '✗ Customer not found, will create new customer with ID:',
+          customerId,
+        );
+        customerExists = false;
+      }
+    }
+
+    // Only create a new customer if one doesn't exist
+    if (!customerExists) {
       console.log('Creating new customer for vault test...');
-      const customerResult = await gateway.customer.create({
+      const customerData = {
         firstName: cardholderName || 'Test',
         lastName: 'Customer',
-      });
+      };
+
+      // If a specific customer ID was requested, try to create with that ID
+      if (customerId) {
+        customerData.id = customerId;
+      }
+
+      const customerResult = await gateway.customer.create(customerData);
 
       if (!customerResult.success) {
         console.error('Customer creation failed:', customerResult.message);
@@ -512,66 +543,148 @@ app.post('/api/vault-test', async (req, res) => {
       customerId = customerResult.customer.id;
       console.log('New customer created:', customerId);
     } else {
-      console.log('Using existing customer ID:', customerId);
+      console.log('Using existing customer ID for vaulting:', customerId);
     }
 
-    // Create transaction with vaulting
-    const transactionData = {
-      amount: parseFloat(amount).toFixed(2),
-      paymentMethodNonce: paymentMethodNonce,
-      customer: {
-        id: customerId,
-      },
-      options: {
-        submitForSettlement: true,
-        storeInVaultOnSuccess: true,
-      },
-    };
+    // For existing customers, vault the payment method first, then transact with the token
+    let paymentMethodToken = null;
 
-    if (deviceData) {
-      transactionData.deviceData = deviceData;
-    }
+    if (customerExists) {
+      console.log('Customer exists - vaulting payment method separately...');
 
-    console.log('Processing vault test transaction...');
-    const result = await gateway.transaction.sale(transactionData);
-
-    if (result.success) {
-      console.log('Vault test transaction successful:', result.transaction.id);
-
-      const response = {
-        success: true,
-        transaction: {
-          id: result.transaction.id,
-          status: result.transaction.status,
-          amount: result.transaction.amount,
-        },
+      const paymentMethodResult = await gateway.paymentMethod.create({
         customerId: customerId,
-      };
+        paymentMethodNonce: paymentMethodNonce,
+        options: {
+          verifyCard: true, // Verify the card during vaulting
+        },
+      });
 
-      // Include vault information
-      if (
-        result.transaction.creditCard &&
-        result.transaction.creditCard.token
-      ) {
-        response.vaultedPaymentMethod = {
-          token: result.transaction.creditCard.token,
-          maskedNumber: result.transaction.creditCard.maskedNumber,
-          cardType: result.transaction.creditCard.cardType,
-          customerId: customerId,
-        };
-        console.log(
-          'Payment method vaulted with token:',
-          result.transaction.creditCard.token
+      if (!paymentMethodResult.success) {
+        console.error(
+          'Payment method vaulting failed:',
+          paymentMethodResult.message,
         );
+        return res.status(400).json({
+          success: false,
+          error: paymentMethodResult.message,
+        });
       }
 
-      res.json(response);
+      paymentMethodToken = paymentMethodResult.paymentMethod.token;
+      console.log('Payment method vaulted with token:', paymentMethodToken);
+
+      // Now create transaction using the vaulted payment method token
+      const transactionData = {
+        amount: parseFloat(amount).toFixed(2),
+        paymentMethodToken: paymentMethodToken,
+        options: {
+          submitForSettlement: true,
+        },
+      };
+
+      if (deviceData) {
+        transactionData.deviceData = deviceData;
+      }
+
+      console.log('Processing transaction with vaulted payment method...');
+      const result = await gateway.transaction.sale(transactionData);
+
+      if (result.success) {
+        console.log('Transaction successful:', result.transaction.id);
+
+        const response = {
+          success: true,
+          transaction: {
+            id: result.transaction.id,
+            status: result.transaction.status,
+            amount: result.transaction.amount,
+          },
+          customerId: customerId,
+          vaultedPaymentMethod: {
+            token: paymentMethodToken,
+            maskedNumber:
+              paymentMethodResult.paymentMethod.maskedNumber ||
+              result.transaction.creditCard?.maskedNumber,
+            cardType:
+              paymentMethodResult.paymentMethod.cardType ||
+              result.transaction.creditCard?.cardType,
+            customerId: customerId,
+          },
+        };
+
+        res.json(response);
+      } else {
+        console.error('Transaction failed:', result.message);
+        res.status(400).json({
+          success: false,
+          error: result.message,
+        });
+      }
     } else {
-      console.error('Vault test transaction failed:', result.message);
-      res.status(400).json({
-        success: false,
-        error: result.message,
-      });
+      // For new customers, use the transaction to vault and process in one step
+      console.log('New customer - vaulting via transaction...');
+
+      const transactionData = {
+        amount: parseFloat(amount).toFixed(2),
+        paymentMethodNonce: paymentMethodNonce,
+        customer: {
+          id: customerId,
+        },
+        options: {
+          submitForSettlement: true,
+          storeInVaultOnSuccess: true,
+        },
+      };
+
+      if (deviceData) {
+        transactionData.deviceData = deviceData;
+      }
+
+      console.log('Processing vault test transaction...');
+      const result = await gateway.transaction.sale(transactionData);
+
+      if (result.success) {
+        console.log(
+          'Vault test transaction successful:',
+          result.transaction.id,
+        );
+
+        const response = {
+          success: true,
+          transaction: {
+            id: result.transaction.id,
+            status: result.transaction.status,
+            amount: result.transaction.amount,
+          },
+          customerId: customerId,
+        };
+
+        // Include vault information
+        if (
+          result.transaction.creditCard &&
+          result.transaction.creditCard.token
+        ) {
+          response.vaultedPaymentMethod = {
+            token: result.transaction.creditCard.token,
+            maskedNumber: result.transaction.creditCard.maskedNumber,
+            cardType: result.transaction.creditCard.cardType,
+            customerId: customerId,
+          };
+          console.log(
+            'Payment method vaulted with token:',
+            result.transaction.creditCard.token,
+          );
+        }
+
+        res.json(response);
+      } else {
+        console.error('Vault test transaction failed:', result.message);
+        res.status(400).json({
+          success: false,
+          error: result.message,
+        });
+      }
     }
   } catch (error) {
     console.error('Error in vault test:', error);
@@ -592,6 +705,6 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(
-    'Make sure to update your .env file with your Braintree credentials'
+    'Make sure to update your .env file with your Braintree credentials',
   );
 });
