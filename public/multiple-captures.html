@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multiple Captures Test - Braintree Integration</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="multiple-captures.css" />
+    <script
+      src="https://js.braintreegateway.com/web/3.103.0/js/client.min.js"
+      defer
+    ></script>
+    <script
+      src="https://js.braintreegateway.com/web/3.103.0/js/data-collector.min.js"
+      defer
+    ></script>
+    <script
+      src="https://js.braintreegateway.com/web/3.103.0/js/paypal-checkout.min.js"
+      defer
+    ></script>
+    <script src="multiple-captures.js" defer></script>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Multiple Captures Test</h1>
+        <p class="subtitle">Test Pay Later Authorization with Multiple Partial Captures</p>
+        <a href="/" class="back-link">← Back to Home</a>
+      </header>
+
+      <main>
+        <section class="info-section">
+          <h2>Test Overview</h2>
+          <p>
+            This page allows you to test whether Pay Later authorizations support multiple partial captures.
+            The workflow is:
+          </p>
+          <ol>
+            <li>Create a Pay Later authorization (without submitting for settlement)</li>
+            <li>Attempt multiple partial captures against the same authorization</li>
+            <li>View results to confirm if multiple captures are supported</li>
+          </ol>
+          <div class="info-box">
+            <strong>Note:</strong> PayPal typically requires authorizations to be captured within 3 days. 
+            Test multiple captures immediately after authorization.
+          </div>
+        </section>
+
+        <!-- Step 1: Create Authorization -->
+        <section class="step-section" id="step1">
+          <h2>Step 1: Create Authorization</h2>
+          <div class="form-group">
+            <label for="authAmount">Authorization Amount ($):</label>
+            <input
+              type="number"
+              id="authAmount"
+              name="authAmount"
+              value="100.00"
+              step="0.01"
+              min="0.01"
+              required
+            />
+          </div>
+
+          <div id="paypalButton"></div>
+
+          <div id="authResult" class="result-box" style="display: none">
+            <h3>Authorization Created</h3>
+            <div class="transaction-details">
+              <p><strong>Transaction ID:</strong> <span id="authId"></span></p>
+              <p><strong>Status:</strong> <span id="authStatus"></span></p>
+              <p><strong>Amount:</strong> $<span id="authAmount"></span></p>
+              <p><strong>Type:</strong> <span id="authType"></span></p>
+              <p><strong>Payment Method:</strong> <span id="authPaymentMethod"></span></p>
+              <p><strong>Email:</strong> <span id="authPayerEmail"></span></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Step 2: Perform Captures -->
+        <section class="step-section" id="step2" style="display: none">
+          <h2>Step 2: Perform Captures</h2>
+          <p>Enter the amount to capture and click "Capture" to submit for partial settlement.</p>
+
+          <div class="form-group">
+            <label for="captureAmount">Capture Amount ($):</label>
+            <input
+              type="number"
+              id="captureAmount"
+              name="captureAmount"
+              value="30.00"
+              step="0.01"
+              min="0.01"
+              required
+            />
+            <button id="captureBtn" class="btn btn-primary">Capture</button>
+          </div>
+
+          <div class="capture-summary">
+            <p><strong>Original Authorization:</strong> $<span id="originalAmount">0.00</span></p>
+            <p><strong>Total Captured:</strong> $<span id="totalCaptured">0.00</span></p>
+            <p><strong>Remaining:</strong> $<span id="remainingAmount">0.00</span></p>
+          </div>
+
+          <div id="captureHistory">
+            <h3>Capture History</h3>
+            <div id="captureList"></div>
+          </div>
+        </section>
+
+        <!-- Step 3: Results -->
+        <section class="step-section" id="step3" style="display: none">
+          <h2>Results</h2>
+          <div id="finalResults" class="result-box"></div>
+        </section>
+
+        <div id="errorMessage" class="error-message" style="display: none"></div>
+        <div id="loadingIndicator" class="loading" style="display: none">
+          <div class="spinner"></div>
+          <p>Processing...</p>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

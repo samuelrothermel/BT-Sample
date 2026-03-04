@@ -695,6 +695,389 @@ app.post('/api/vault-test', async (req, res) => {
   }
 });
 
+// Vault payment method for recurring billing
+app.post('/api/vault-payment-method', async (req, res) => {
+  const { paymentMethodNonce, firstName, lastName, deviceData } = req.body;
+
+  if (!paymentMethodNonce) {
+    return res.status(400).json({ error: 'Payment method nonce is required' });
+  }
+
+  try {
+    console.log('Creating customer for payment method vaulting...');
+
+    // Step 1: Create a customer
+    const customerResult = await gateway.customer.create({
+      firstName: firstName || 'Customer',
+      lastName: lastName || '',
+    });
+
+    if (!customerResult.success) {
+      console.error('Customer creation failed:', customerResult.message);
+      return res.status(400).json({
+        success: false,
+        error: customerResult.message,
+      });
+    }
+
+    const customerId = customerResult.customer.id;
+    console.log('Customer created:', customerId);
+
+    // Step 2: Vault the payment method
+    console.log('Vaulting payment method for customer:', customerId);
+
+    const paymentMethodData = {
+      customerId: customerId,
+      paymentMethodNonce: paymentMethodNonce,
+      options: {
+        verifyCard: false, // Set to true if you want to verify credit cards
+      },
+    };
+
+    if (deviceData) {
+      paymentMethodData.deviceData = deviceData;
+    }
+
+    const paymentMethodResult =
+      await gateway.paymentMethod.create(paymentMethodData);
+
+    if (!paymentMethodResult.success) {
+      console.error(
+        'Payment method creation failed:',
+        paymentMethodResult.message,
+      );
+      return res.status(400).json({
+        success: false,
+        error: paymentMethodResult.message,
+      });
+    }
+
+    const paymentMethodToken = paymentMethodResult.paymentMethod.token;
+    console.log('Payment method vaulted with token:', paymentMethodToken);
+
+    // Prepare response with payment method details
+    const response = {
+      success: true,
+      customerId: customerId,
+      paymentMethodToken: paymentMethodToken,
+    };
+
+    // Add specific details based on payment method type
+    if (paymentMethodResult.paymentMethod.usBankAccount) {
+      const bankAccount = paymentMethodResult.paymentMethod.usBankAccount;
+      response.last4 = bankAccount.last4;
+      response.accountType = bankAccount.accountType;
+      response.bankName = bankAccount.bankName;
+      response.accountHolderName = bankAccount.accountHolderName;
+      response.paymentType = 'US Bank Account';
+    } else if (paymentMethodResult.paymentMethod.maskedNumber) {
+      response.maskedNumber = paymentMethodResult.paymentMethod.maskedNumber;
+      response.cardType = paymentMethodResult.paymentMethod.cardType;
+      response.paymentType = 'Credit Card';
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error vaulting payment method:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to vault payment method: ' + error.message,
+    });
+  }
+});
+
+// Create subscription with vaulted payment method
+app.post('/api/create-subscription', async (req, res) => {
+  const { paymentMethodToken, planId } = req.body;
+
+  if (!paymentMethodToken) {
+    return res.status(400).json({ error: 'Payment method token is required' });
+  }
+
+  if (!planId) {
+    return res.status(400).json({ error: 'Plan ID is required' });
+  }
+
+  try {
+    console.log(
+      'Creating subscription with payment method:',
+      paymentMethodToken,
+    );
+    console.log('Plan ID:', planId);
+
+    const subscriptionData = {
+      paymentMethodToken: paymentMethodToken,
+      planId: planId,
+    };
+
+    const result = await gateway.subscription.create(subscriptionData);
+
+    if (result.success) {
+      console.log('Subscription created successfully:', result.subscription.id);
+      console.log(
+        'Full subscription result:',
+        JSON.stringify(result.subscription, null, 2),
+      );
+
+      const response = {
+        success: true,
+        subscription: {
+          id: result.subscription.id,
+          status: result.subscription.status,
+          planId: result.subscription.planId,
+          price: result.subscription.price,
+          firstBillingDate: result.subscription.firstBillingDate,
+          nextBillingDate: result.subscription.nextBillingDate,
+          billingPeriodStartDate: result.subscription.billingPeriodStartDate,
+          billingPeriodEndDate: result.subscription.billingPeriodEndDate,
+          currentBillingCycle: result.subscription.currentBillingCycle,
+        },
+      };
+
+      res.json(response);
+    } else {
+      console.error('Subscription creation failed:', result.message);
+      console.error('Full error result:', JSON.stringify(result, null, 2));
+
+      // Provide more detailed error information
+      let errorMessage = result.message;
+      const errorDetails = {};
+
+      if (result.errors && result.errors.deepErrors) {
+        const deepErrors = result.errors.deepErrors();
+        if (deepErrors.length > 0) {
+          const detailedErrors = deepErrors.map(e => ({
+            code: e.code,
+            message: e.message,
+            attribute: e.attribute,
+          }));
+          console.error(
+            'Deep errors:',
+            JSON.stringify(detailedErrors, null, 2),
+          );
+          errorMessage += ': ' + deepErrors.map(e => e.message).join(', ');
+          errorDetails.deepErrors = detailedErrors;
+        }
+      }
+
+      // Extract transaction/request information
+      const debugInfo = {
+        success: false,
+        error: errorMessage,
+        errorDetails: errorDetails,
+        requestId: result.transaction?.id || result.subscription?.id || 'N/A',
+        params: {
+          paymentMethodToken: paymentMethodToken,
+          planId: planId,
+        },
+      };
+
+      console.error(
+        'Returning error response:',
+        JSON.stringify(debugInfo, null, 2),
+      );
+      res.status(400).json(debugInfo);
+    }
+  } catch (error) {
+    console.error('Error creating subscription:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
+
+    const errorResponse = {
+      success: false,
+      error: 'Failed to create subscription: ' + error.message,
+      errorDetails: {
+        type: error.name,
+        code: error.code,
+      },
+      params: {
+        paymentMethodToken: paymentMethodToken,
+        planId: planId,
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    console.error(
+      'Returning error response:',
+      JSON.stringify(errorResponse, null, 2),
+    );
+    res.status(500).json(errorResponse);
+  }
+});
+
+// Create authorization (without submitting for settlement) - for testing multiple captures
+app.post('/api/authorize', async (req, res) => {
+  const { paymentMethodNonce, amount, merchantAccountId } = req.body;
+
+  if (!paymentMethodNonce) {
+    return res.status(400).json({ error: 'Payment method nonce is required' });
+  }
+
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    return res.status(400).json({ error: 'Valid amount is required' });
+  }
+
+  try {
+    const transactionData = {
+      amount: parseFloat(amount).toFixed(2),
+      paymentMethodNonce: paymentMethodNonce,
+      options: {
+        submitForSettlement: false, // This creates an authorization only
+      },
+    };
+
+    // Add merchant account ID if provided
+    if (merchantAccountId) {
+      transactionData.merchantAccountId = merchantAccountId;
+      console.log(
+        'Creating authorization with merchant account:',
+        merchantAccountId,
+      );
+    }
+
+    console.log(
+      'Creating authorization:',
+      JSON.stringify(transactionData, null, 2),
+    );
+
+    const result = await gateway.transaction.sale(transactionData);
+
+    if (result.success) {
+      console.log('Authorization successful:', result.transaction.id);
+      console.log(
+        'Full transaction result:',
+        JSON.stringify(result.transaction, null, 2),
+      );
+
+      res.json({
+        success: true,
+        transaction: {
+          id: result.transaction.id,
+          status: result.transaction.status,
+          amount: result.transaction.amount,
+          type: result.transaction.type,
+          paymentInstrumentType: result.transaction.paymentInstrumentType,
+          createdAt: result.transaction.createdAt,
+          paypal: result.transaction.paypal,
+        },
+      });
+    } else {
+      console.error('Authorization failed:', result.message);
+      res.status(400).json({
+        success: false,
+        error: result.message,
+      });
+    }
+  } catch (error) {
+    console.error('Error creating authorization:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create authorization: ' + error.message,
+    });
+  }
+});
+
+// Get transaction details
+app.get('/api/transaction/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    console.log('Fetching transaction details for:', id);
+    const transaction = await gateway.transaction.find(id);
+
+    res.json({
+      success: true,
+      transaction: {
+        id: transaction.id,
+        status: transaction.status,
+        type: transaction.type,
+        amount: transaction.amount,
+        paymentInstrumentType: transaction.paymentInstrumentType,
+        createdAt: transaction.createdAt,
+        updatedAt: transaction.updatedAt,
+        refundedTransactionId: transaction.refundedTransactionId,
+        paypal: transaction.paypal,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching transaction:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch transaction: ' + error.message,
+    });
+  }
+});
+
+// Perform partial capture (submit for partial settlement)
+app.post('/api/capture', async (req, res) => {
+  const { transactionId, amount } = req.body;
+
+  if (!transactionId) {
+    return res.status(400).json({ error: 'Transaction ID is required' });
+  }
+
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    return res.status(400).json({ error: 'Valid amount is required' });
+  }
+
+  try {
+    console.log(
+      `Attempting partial capture of ${amount} on transaction ${transactionId}`,
+    );
+
+    const result = await gateway.transaction.submitForPartialSettlement(
+      transactionId,
+      parseFloat(amount).toFixed(2),
+    );
+
+    if (result.success) {
+      console.log('Partial capture successful:', result.transaction.id);
+      console.log(
+        'Full capture result:',
+        JSON.stringify(result.transaction, null, 2),
+      );
+
+      res.json({
+        success: true,
+        transaction: {
+          id: result.transaction.id,
+          status: result.transaction.status,
+          amount: result.transaction.amount,
+          type: result.transaction.type,
+          paymentInstrumentType: result.transaction.paymentInstrumentType,
+          createdAt: result.transaction.createdAt,
+          authorizedTransactionId: transactionId,
+        },
+      });
+    } else {
+      console.error('Partial capture failed:', result.message);
+
+      // Extract detailed error information
+      let errorMessage = result.message;
+      if (result.errors && result.errors.deepErrors) {
+        const deepErrors = result.errors.deepErrors();
+        if (deepErrors.length > 0) {
+          errorMessage += ': ' + deepErrors.map(e => e.message).join(', ');
+        }
+      }
+
+      res.status(400).json({
+        success: false,
+        error: errorMessage,
+      });
+    }
+  } catch (error) {
+    console.error('Error performing partial capture:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to capture transaction: ' + error.message,
+    });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
