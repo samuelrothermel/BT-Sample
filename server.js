@@ -239,6 +239,7 @@ app.post('/api/ach-sale', async (req, res) => {
 app.post('/api/sale', async (req, res) => {
   const {
     paymentMethodNonce,
+    paymentMethodToken,
     amount,
     billingAddress,
     vaultPaymentMethod,
@@ -250,10 +251,11 @@ app.post('/api/sale', async (req, res) => {
     merchantAccountId,
   } = req.body;
 
-  if (!paymentMethodNonce && !bankAccount) {
-    return res
-      .status(400)
-      .json({ error: 'Payment method nonce or bank account is required' });
+  if (!paymentMethodNonce && !paymentMethodToken && !bankAccount) {
+    return res.status(400).json({
+      error:
+        'Payment method nonce, payment method token, or bank account is required',
+    });
   }
 
   if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
@@ -278,7 +280,14 @@ app.post('/api/sale', async (req, res) => {
     }
 
     // Handle different payment methods
-    if (paymentMethodNonce) {
+    if (paymentMethodToken) {
+      // Use a vaulted payment method token (bypasses verification)
+      transactionData.paymentMethodToken = paymentMethodToken;
+      console.log(
+        'Processing transaction with vaulted payment method token:',
+        paymentMethodToken,
+      );
+    } else if (paymentMethodNonce) {
       transactionData.paymentMethodNonce = paymentMethodNonce;
     } else if (bankAccount) {
       // ACH payments require tokenization on the client side
@@ -905,6 +914,231 @@ app.post('/api/create-subscription', async (req, res) => {
       JSON.stringify(errorResponse, null, 2),
     );
     res.status(500).json(errorResponse);
+  }
+});
+
+// Create crypto payment context via Braintree GraphQL API
+// The Node server SDK does not yet have a wrapper for createLocalPaymentContext,
+// so we call the GraphQL endpoint directly using the public/private key for Basic auth.
+app.post('/api/crypto-payment-context', async (req, res) => {
+  const {
+    amount,
+    currency,
+    returnUrl,
+    cancelUrl,
+    buyerDetails,
+    merchantAccountId,
+  } = req.body;
+
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    return res.status(400).json({ error: 'Valid amount is required' });
+  }
+
+  // Use the crypto-specific merchant account ID from env, or fall back to the
+  // value passed by the client (allows overriding per request during testing)
+  const cryptoMerchantAccountId =
+    merchantAccountId ||
+    process.env.BRAINTREE_CRYPTO_MERCHANT_ACCOUNT_ID ||
+    process.env.BRAINTREE_MERCHANT_ID;
+
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const resolvedReturnUrl = returnUrl || `${baseUrl}/pay-with-crypto.html`;
+  const resolvedCancelUrl = cancelUrl || `${baseUrl}/pay-with-crypto.html?cancelled=true`;
+
+  // GraphQL mutation from the integration guide
+  const mutation = `
+    mutation CreateLocalPaymentContext($input: CreateLocalPaymentContextInput!) {
+      createLocalPaymentContext(input: $input) {
+        paymentContext {
+          id
+          type
+          paymentId
+          approvalUrl
+          merchantAccountId
+          createdAt
+          amount {
+            value
+            currencyCode
+          }
+        }
+      }
+    }
+  `;
+
+  const variables = {
+    input: {
+      amount: {
+        value: parseFloat(amount).toFixed(2),
+        currencyCode: currency || 'USD',
+      },
+      type: 'CRYPTO',
+      merchantAccountId: cryptoMerchantAccountId,
+      returnUrl: resolvedReturnUrl,
+      cancelUrl: resolvedCancelUrl,
+      countryCode: req.body.countryCode || 'US',
+      payerGivenName: buyerDetails?.firstName || 'Test',
+      payerSurname: buyerDetails?.lastName || 'Buyer',
+      payerEmail: buyerDetails?.email || 'test@example.com',
+    },
+  };
+
+  // Braintree GraphQL endpoint (sandbox vs production)
+  const isSandbox =
+    (process.env.BRAINTREE_ENVIRONMENT || 'sandbox').toLowerCase() !== 'production';
+  const graphqlUrl = isSandbox
+    ? 'https://payments.sandbox.braintree-api.com/graphql'
+    : 'https://payments.braintree-api.com/graphql';
+
+  // Basic auth: public_key:private_key encoded as Base64
+  const credentials = Buffer.from(
+    `${process.env.BRAINTREE_PUBLIC_KEY}:${process.env.BRAINTREE_PRIVATE_KEY}`
+  ).toString('base64');
+
+  console.log('Creating crypto payment context via GraphQL:', {
+    amount: variables.input.amount,
+    merchantAccountId: cryptoMerchantAccountId,
+    returnUrl: resolvedReturnUrl,
+  });
+
+  try {
+    const https = require('https');
+    const body = JSON.stringify({ query: mutation, variables });
+
+    const graphqlResponse = await new Promise((resolve, reject) => {
+      const url = new URL(graphqlUrl);
+      const options = {
+        hostname: url.hostname,
+        path: url.pathname,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${credentials}`,
+          'Braintree-Version': '2019-01-01',
+          'Content-Length': Buffer.byteLength(body),
+        },
+      };
+
+      const request = https.request(options, (response) => {
+        let data = '';
+        response.on('data', (chunk) => { data += chunk; });
+        response.on('end', () => {
+          try {
+            resolve({ status: response.statusCode, body: JSON.parse(data) });
+          } catch (e) {
+            reject(new Error('Failed to parse GraphQL response: ' + data));
+          }
+        });
+      });
+
+      request.on('error', reject);
+      request.write(body);
+      request.end();
+    });
+
+    console.log('GraphQL response status:', graphqlResponse.status);
+    console.log('GraphQL response body:', JSON.stringify(graphqlResponse.body, null, 2));
+
+    const gqlBody = graphqlResponse.body;
+
+    if (gqlBody.errors && gqlBody.errors.length > 0) {
+      const errMsg = gqlBody.errors.map(e => e.message).join('; ');
+      console.error('GraphQL errors:', errMsg);
+      return res.status(400).json({
+        success: false,
+        error: errMsg,
+        graphqlErrors: gqlBody.errors,
+      });
+    }
+
+    const paymentContext = gqlBody.data?.createLocalPaymentContext?.paymentContext;
+    if (!paymentContext) {
+      return res.status(500).json({
+        success: false,
+        error: 'No paymentContext in GraphQL response',
+        rawResponse: gqlBody,
+      });
+    }
+
+    // Decode the GraphQL ID from Base64 to legacy format (as shown in the Ruby guide)
+    let legacyId = paymentContext.id;
+    try {
+      const decoded = Buffer.from(paymentContext.id, 'base64').toString('utf8');
+      legacyId = decoded.split('#').pop() || paymentContext.id;
+    } catch (_) {
+      // If decoding fails, use the raw ID
+    }
+
+    console.log('Crypto payment context created successfully:', {
+      id: legacyId,
+      paymentId: paymentContext.paymentId,
+      approvalUrl: paymentContext.approvalUrl,
+    });
+
+    res.json({
+      success: true,
+      id: legacyId,
+      paymentContextId: legacyId,
+      paymentId: paymentContext.paymentId,
+      approvalUrl: paymentContext.approvalUrl,
+      amount: paymentContext.amount,
+      type: paymentContext.type,
+    });
+  } catch (error) {
+    console.error('Error calling Braintree GraphQL for crypto payment context:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create crypto payment context: ' + error.message,
+    });
+  }
+});
+
+// Process crypto transaction after the buyer approves the payment context
+// Called after the full-page redirect returns with a nonce
+app.post('/api/crypto-sale', async (req, res) => {
+  const { paymentMethodNonce, amount } = req.body;
+
+  if (!paymentMethodNonce) {
+    return res.status(400).json({ error: 'Payment method nonce is required' });
+  }
+
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    return res.status(400).json({ error: 'Valid amount is required' });
+  }
+
+  try {
+    console.log('Processing crypto transaction with nonce:', paymentMethodNonce);
+
+    const result = await gateway.transaction.sale({
+      amount: parseFloat(amount).toFixed(2),
+      paymentMethodNonce: paymentMethodNonce,
+      options: {
+        submitForSettlement: true,
+      },
+    });
+
+    if (result.success) {
+      console.log('Crypto transaction successful:', result.transaction.id);
+      console.log('Full transaction result:', JSON.stringify(result.transaction, null, 2));
+
+      res.json({
+        success: true,
+        transaction: {
+          id: result.transaction.id,
+          status: result.transaction.status,
+          amount: result.transaction.amount,
+          paymentInstrumentType: result.transaction.paymentInstrumentType,
+        },
+      });
+    } else {
+      console.error('Crypto transaction failed:', result.message);
+      res.status(400).json({ success: false, error: result.message });
+    }
+  } catch (error) {
+    console.error('Error processing crypto transaction:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process crypto transaction: ' + error.message,
+    });
   }
 });
 

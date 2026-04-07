@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vaulted Token Sale - Braintree Demo</title>
+    <link rel="stylesheet" href="vaulted-token-sale.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 Vaulted Token Sale</h1>
+            <p>Process transactions using previously vaulted payment method tokens</p>
+            <a href="index.html" class="back-link">← Back to Samples</a>
+        </header>
+
+        <main>
+            <div class="info-section">
+                <details open>
+                    <summary>ℹ️ About Vaulted Token Transactions</summary>
+                    <div class="info-content">
+                        <p><strong>What is this?</strong></p>
+                        <p>This page demonstrates processing new sale transactions using previously vaulted payment method tokens. This is useful for:</p>
+                        <ul>
+                            <li><strong>ACH Transactions:</strong> Use verified ACH tokens for instant transactions (bypasses network check verification)</li>
+                            <li><strong>Recurring Payments:</strong> Charge saved credit cards or bank accounts</li>
+                            <li><strong>One-Click Checkout:</strong> Use stored payment methods without re-entering details</li>
+                            <li><strong>Subscription Renewals:</strong> Automatic charges to stored payment methods</li>
+                        </ul>
+                        
+                        <p><strong>How to get a token:</strong></p>
+                        <ol>
+                            <li>Visit any vaulted payment demo page (e.g., <a href="hosted-vaulted.html">Hosted Fields Vaulted</a> or <a href="ach-only.html">ACH Only</a>)</li>
+                            <li>Complete a transaction with vaulting enabled</li>
+                            <li>Copy the payment method token from the success message</li>
+                            <li>Return to this page and paste the token below</li>
+                        </ol>
+
+                        <p><strong>Benefits:</strong></p>
+                        <ul>
+                            <li>✅ No verification required (already verified during initial vault)</li>
+                            <li>✅ Faster transaction processing</li>
+                            <li>✅ Better user experience (no re-entry of payment details)</li>
+                            <li>✅ Works with all payment methods (cards, ACH, PayPal, Venmo, etc.)</li>
+                        </ul>
+                    </div>
+                </details>
+            </div>
+
+            <div class="payment-form">
+                <h2>Process Sale with Vaulted Token</h2>
+                
+                <form id="token-sale-form">
+                    <div class="form-group">
+                        <label for="payment-method-token">Payment Method Token *</label>
+                        <input 
+                            type="text" 
+                            id="payment-method-token" 
+                            placeholder="e.g., 5hqnz9, abc123xyz, etc."
+                            required
+                        >
+                        <small class="field-note">Enter the token from a previously vaulted payment method</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="amount">Transaction Amount ($) *</label>
+                        <input 
+                            type="number" 
+                            id="amount" 
+                            min="0.01" 
+                            step="0.01" 
+                            value="15.00"
+                            required
+                        >
+                        <small class="field-note">Amount to charge to the vaulted payment method</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="merchant-account-id">Merchant Account ID (Optional)</label>
+                        <input 
+                            type="text" 
+                            id="merchant-account-id" 
+                            placeholder="e.g., samcad2 for CAD"
+                        >
+                        <small class="field-note">Leave blank to use default merchant account</small>
+                    </div>
+
+                    <button type="submit" id="submit-button" class="btn-primary">
+                        💳 Process Sale
+                    </button>
+                </form>
+            </div>
+
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Processing transaction...</p>
+            </div>
+
+            <div id="result" class="result" style="display: none;"></div>
+
+            <div class="test-tokens-section">
+                <details>
+                    <summary>🧪 Need Test Tokens?</summary>
+                    <div class="test-info">
+                        <p><strong>To get test tokens:</strong></p>
+                        <ol>
+                            <li><strong>ACH Token:</strong> Go to <a href="ach-only.html" target="_blank">ACH Only page</a>, complete a transaction, and copy the token</li>
+                            <li><strong>Credit Card Token:</strong> Go to <a href="hosted-vaulted.html" target="_blank">Hosted Fields Vaulted</a>, pay with card, and copy the token</li>
+                            <li><strong>PayPal Token:</strong> Same as credit card, but use PayPal option</li>
+                        </ol>
+                        <p><strong>Note:</strong> Tokens are specific to your Braintree sandbox environment and cannot be shared.</p>
+                    </div>
+                </details>
+            </div>
+        </main>
+
+        <footer>
+            <p>⚠️ <strong>Sandbox Mode:</strong> This is a test environment. No real money will be charged.</p>
+        </footer>
+    </div>
+
+    <script src="vaulted-token-sale.js"></script>
+</body>
+</html>

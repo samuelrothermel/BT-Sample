@@ -106,13 +106,13 @@ async function initializeBraintree() {
       postalCode: { isValid: false },
     };
 
-    hostedFieldsInstance.on('validityChange', (event) => {
+    hostedFieldsInstance.on('validityChange', event => {
       const field = event.fields[event.emittedBy];
       fieldsState[event.emittedBy].isValid = field.isValid;
       updateSubmitButton(fieldsState);
     });
 
-    hostedFieldsInstance.on('empty', (event) => {
+    hostedFieldsInstance.on('empty', event => {
       fieldsState[event.emittedBy].isValid = false;
       updateSubmitButton(fieldsState);
     });
@@ -127,7 +127,7 @@ async function initializeBraintree() {
 // Update submit button state based on field validity
 function updateSubmitButton(fieldsState) {
   const allFieldsValid = Object.values(fieldsState).every(
-    (field) => field.isValid,
+    field => field.isValid,
   );
   const planIdValid = planIdInput.value.trim().length > 0;
 
@@ -149,7 +149,7 @@ planIdInput.addEventListener('input', () => {
 });
 
 // Handle form submission
-form.addEventListener('submit', async (event) => {
+form.addEventListener('submit', async event => {
   event.preventDefault();
 
   const planId = planIdInput.value.trim();

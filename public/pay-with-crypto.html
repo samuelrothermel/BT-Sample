@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pay with Crypto - Braintree</title>
+    <link rel="stylesheet" href="pay-with-crypto.css">
+    <!-- Braintree Client SDK v3.137.0+ required for Pay with Crypto -->
+    <script src="https://js.braintreegateway.com/web/3.137.0/js/client.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.137.0/js/local-payment.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Pay with Crypto</h1>
+            <p>Accept cryptocurrency payments via Braintree</p>
+            <a href="index.html" class="back-link">← Back to Samples</a>
+        </header>
+
+        <main>
+            <div class="payment-form">
+
+                <!-- How it works -->
+                <div class="info-box">
+                    <details>
+                        <summary>ℹ️ How Pay with Crypto Works</summary>
+                        <div class="info-content">
+                            <p><strong>Integration type:</strong> Local Payment Method using <code>createLocalPaymentContext</code> GraphQL mutation + <code>localPayment.startPayment()</code></p>
+                            <p><strong>Flow:</strong></p>
+                            <ol>
+                                <li>Client sends buyer details &amp; amount to merchant server</li>
+                                <li>Server calls Braintree GraphQL <code>createLocalPaymentContext</code> → gets <code>approvalUrl</code></li>
+                                <li>Client SDK calls <code>localPayment.startPayment({ paymentType: 'crypto', cryptoOptions: { approvalUrl } })</code></li>
+                                <li>Full-page redirect to PayPal crypto approval UI</li>
+                                <li>Buyer approves → redirected back with a <code>paymentMethodNonce</code></li>
+                                <li>Merchant server calls <code>/api/crypto-sale</code> to settle</li>
+                            </ol>
+                            <p><strong>Requirements:</strong> SDK v3.137.0+, crypto-enabled merchant account, crypto merchant account ID (e.g. <code>CRYPTO_USD</code>).</p>
+                            <p><strong>Settlement:</strong> Automatic in local currency or PYUSD. Refunds use standard Braintree Transactions API.</p>
+                            <p><strong>Webhooks:</strong> Listen for <code>LOCAL_PAYMENT_COMPLETED</code> for payment confirmation.</p>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Step indicator -->
+                <div class="steps">
+                    <div class="step active" id="step-1-indicator">
+                        <span class="step-num">1</span>
+                        <span class="step-label">Configure</span>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step" id="step-2-indicator">
+                        <span class="step-num">2</span>
+                        <span class="step-label">Approve</span>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step" id="step-3-indicator">
+                        <span class="step-num">3</span>
+                        <span class="step-label">Complete</span>
+                    </div>
+                </div>
+
+                <!-- Step 1: Configure payment -->
+                <div id="step-1" class="step-content">
+                    <h2>Payment Details</h2>
+
+                    <div class="form-group">
+                        <label for="amount">Amount (USD)</label>
+                        <input type="number" id="amount" min="0.01" step="0.01" value="10.00" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="merchant-account-id">Crypto Merchant Account ID</label>
+                        <input type="text" id="merchant-account-id" placeholder="e.g. CRYPTO_USD">
+                        <small class="field-note">The crypto-specific merchant account ID. Falls back to <code>BRAINTREE_CRYPTO_MERCHANT_ACCOUNT_ID</code> in .env if blank.</small>
+                    </div>
+
+                    <h3 class="section-heading">Buyer Details <span class="required-note">(required by PayPal)</span></h3>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="buyer-first-name">First Name</label>
+                            <input type="text" id="buyer-first-name" placeholder="John" value="John">
+                        </div>
+                        <div class="form-group">
+                            <label for="buyer-last-name">Last Name</label>
+                            <input type="text" id="buyer-last-name" placeholder="Doe" value="Doe">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="buyer-email">Email</label>
+                        <input type="email" id="buyer-email" placeholder="buyer@example.com" value="buyer@example.com">
+                    </div>
+
+                    <button id="start-payment-button" class="pay-button" disabled>
+                        <span class="button-icon">₿</span>
+                        <span class="button-text">Pay with Crypto</span>
+                        <span class="loading-spinner" style="display: none;">Creating payment context...</span>
+                    </button>
+
+                    <div id="step1-error" class="error-message" style="display: none;"></div>
+                </div>
+
+                <!-- Step 3: Post-redirect processing -->
+                <div id="step-3" class="step-content" style="display: none;">
+                    <h2>Completing Payment</h2>
+                    <p class="redirect-note">Returned from PayPal crypto approval. Processing your transaction...</p>
+                    <div class="processing-indicator">
+                        <div class="spinner"></div>
+                        <span>Submitting transaction to Braintree...</span>
+                    </div>
+                    <div id="step3-error" class="error-message" style="display: none;"></div>
+                </div>
+
+                <!-- Result -->
+                <div id="result" class="result" style="display: none;"></div>
+
+                <!-- Debug info — always visible in collapsed state to aid testing -->
+                <div id="debug-info" class="debug-info" style="display: none;">
+                    <details>
+                        <summary>🔍 Debug / Response Data</summary>
+                        <pre id="debug-content"></pre>
+                    </details>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="pay-with-crypto.js"></script>
+</body>
+</html>

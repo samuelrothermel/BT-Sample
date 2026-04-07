@@ -1,0 +1,291 @@
+/* Import shared styles */
+@import url('styles.css');
+
+/* Additional styles specific to vaulted token sale page */
+.info-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.info-section summary {
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 0.5rem;
+  list-style: none;
+  user-select: none;
+}
+
+.info-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.info-section summary::before {
+  content: '▶ ';
+  display: inline-block;
+  transition: transform 0.3s;
+}
+
+.info-section details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.info-content {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.info-content p {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+
+.info-content ul,
+.info-content ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.info-content li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.info-content a {
+  color: #ffd700;
+  text-decoration: underline;
+}
+
+.info-content a:hover {
+  color: #ffed4e;
+}
+
+.payment-form {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.payment-form h2 {
+  color: #333;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #555;
+  font-weight: 600;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.form-group input::placeholder {
+  color: #999;
+}
+
+.field-note {
+  display: block;
+  margin-top: 0.25rem;
+  color: #777;
+  font-size: 0.875rem;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  margin: 0 auto 1rem;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.result {
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.result.success {
+  background: #d4edda;
+  border-left: 4px solid #28a745;
+  color: #155724;
+}
+
+.result.error {
+  background: #f8d7da;
+  border-left: 4px solid #dc3545;
+  color: #721c24;
+}
+
+.result h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.result-item {
+  margin-bottom: 0.5rem;
+}
+
+.result-item strong {
+  display: inline-block;
+  min-width: 150px;
+}
+
+.test-tokens-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.test-tokens-section summary {
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #667eea;
+  user-select: none;
+}
+
+.test-tokens-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.test-tokens-section summary::before {
+  content: '▶ ';
+  display: inline-block;
+  transition: transform 0.3s;
+}
+
+.test-tokens-section details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.test-info {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.test-info p {
+  margin-bottom: 0.75rem;
+}
+
+.test-info ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.test-info li {
+  margin-bottom: 0.5rem;
+}
+
+.test-info a {
+  color: #667eea;
+  text-decoration: underline;
+}
+
+.test-info a:hover {
+  color: #764ba2;
+}
+
+footer {
+  text-align: center;
+  padding: 1.5rem;
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  border-radius: 8px;
+  margin-top: 2rem;
+}
+
+footer p {
+  margin: 0;
+  color: #856404;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .payment-form {
+    padding: 1.5rem;
+  }
+
+  .info-section {
+    padding: 1rem;
+  }
+}
