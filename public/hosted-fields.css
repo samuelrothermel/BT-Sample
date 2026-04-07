@@ -536,3 +536,79 @@ input[type='number']:focus {
     gap: 15px;
   }
 }
+
+/* ── Pay with Crypto ───────────────────────────────────────────── */
+
+.crypto-buyer-details {
+  margin-bottom: 14px;
+}
+
+.crypto-buyer-details .form-group {
+  margin-bottom: 10px;
+}
+
+.crypto-buyer-details label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 4px;
+}
+
+.crypto-buyer-details input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.crypto-buyer-details input:focus {
+  border-color: #f7931a;
+  box-shadow: 0 0 0 3px rgba(247, 147, 26, 0.12);
+}
+
+.crypto-button {
+  width: 100%;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #f7931a 0%, #ff6b35 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s, transform 0.1s;
+  margin-top: 4px;
+}
+
+.crypto-button:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.crypto-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.crypto-button .button-icon {
+  font-size: 1.1rem;
+}
+
+.crypto-error {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}

@@ -967,10 +967,10 @@ app.post('/api/crypto-payment-context', async (req, res) => {
 
   const variables = {
     input: {
-      amount: {
-        value: parseFloat(amount).toFixed(2),
-        currencyCode: currency || 'USD',
-      },
+      // Ruby SDK uses amount_value / amount_currency_code as flat fields;
+      // GraphQL camelCase equivalents are amountValue / currencyCode
+      amountValue: parseFloat(amount).toFixed(2),
+      currencyCode: currency || 'USD',
       type: 'CRYPTO',
       merchantAccountId: cryptoMerchantAccountId,
       returnUrl: resolvedReturnUrl,

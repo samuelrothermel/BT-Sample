@@ -100,6 +100,34 @@
                     <div id="venmo-button" class="payment-button-container"></div>
                 </div>
 
+                <!-- Pay with Crypto -->
+                <div class="alternative-payment-method">
+                    <h3>Pay with Crypto</h3>
+                    <p>Pay using cryptocurrency via PayPal. You'll be redirected to approve the payment and then returned here.</p>
+                    <div id="crypto-buyer-details" class="crypto-buyer-details">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="crypto-first-name">First Name</label>
+                                <input type="text" id="crypto-first-name" placeholder="John" value="John">
+                            </div>
+                            <div class="form-group">
+                                <label for="crypto-last-name">Last Name</label>
+                                <input type="text" id="crypto-last-name" placeholder="Doe" value="Doe">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="crypto-email">Email</label>
+                            <input type="email" id="crypto-email" placeholder="buyer@example.com" value="buyer@example.com">
+                        </div>
+                    </div>
+                    <button type="button" id="crypto-pay-button" class="crypto-button" disabled>
+                        <span class="button-icon">₿</span>
+                        <span class="button-text">Pay with Crypto</span>
+                        <span class="loading-spinner" style="display: none;">Creating payment context...</span>
+                    </button>
+                    <div id="crypto-error" class="crypto-error" style="display: none;"></div>
+                </div>
+
                 <!-- ACH Bank Account Form -->
                 <div class="alternative-payment-method">
                     <h3>Bank Account (ACH)</h3>
@@ -153,6 +181,9 @@
     <script src="https://js.braintreegateway.com/web/3.97.2/js/us-bank-account.min.js"></script>
     <script src="https://js.braintreegateway.com/web/3.97.2/js/data-collector.min.js"></script>
     
+    <!-- Local Payment Methods component (3.137.0+) for Pay with Crypto -->
+    <script src="https://js.braintreegateway.com/web/3.137.0/js/local-payment.min.js"></script>
+
     <!-- Custom JavaScript -->
     <script src="hosted-fields.js"></script>
 </body>

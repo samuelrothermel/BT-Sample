@@ -20,6 +20,7 @@ let paypalCheckoutInstance;
 let venmoInstance;
 let clientInstance; // Store client instance for Venmo re-initialization
 let dataCollectorInstance;
+let localPaymentInstance; // For Pay with Crypto
 
 // Initialize Braintree when page loads
 document.addEventListener('DOMContentLoaded', async () => {
@@ -133,6 +134,9 @@ async function initializeBraintree() {
 
     // Set up Venmo toggle listener
     setupVenmoToggle();
+
+    // Initialize Pay with Crypto (localPayment SDK)
+    await initializeCrypto(clientInstance);
 
     console.log('Braintree initialized successfully');
   } catch (error) {
@@ -782,3 +786,158 @@ function setACHLoadingState(loading) {
     }
   }
 }
+
+// ─── Pay with Crypto ────────────────────────────────────────────────────────
+
+async function initializeCrypto(client) {
+  const cryptoButton = document.getElementById('crypto-pay-button');
+  const cryptoError = document.getElementById('crypto-error');
+
+  try {
+    localPaymentInstance = await braintree.localPayment.create({ client: client });
+    cryptoButton.disabled = false;
+    console.log('LocalPayment instance ready for Pay with Crypto');
+  } catch (err) {
+    console.error('Failed to initialize localPayment for crypto:', err);
+    cryptoButton.disabled = true;
+    cryptoError.textContent = 'Pay with Crypto unavailable: ' + err.message;
+    cryptoError.style.display = 'block';
+    return;
+  }
+
+  cryptoButton.addEventListener('click', async function () {
+    cryptoError.style.display = 'none';
+
+    const amount = amountInput.value;
+    if (!amount || parseFloat(amount) <= 0) {
+      showResult('Please enter a valid amount.', 'error');
+      return;
+    }
+
+    const firstName = document.getElementById('crypto-first-name').value.trim() || 'Test';
+    const lastName = document.getElementById('crypto-last-name').value.trim() || 'Buyer';
+    const email = document.getElementById('crypto-email').value.trim() || 'test@example.com';
+
+    // Encode amount in the return URL so it survives the redirect
+    const returnUrl = window.location.origin + window.location.pathname +
+      '?cryptoAmount=' + encodeURIComponent(amount);
+    const cancelUrl = window.location.origin + window.location.pathname +
+      '?cryptoCancelled=true';
+
+    setCryptoLoadingState(true);
+
+    try {
+      // Server creates payment context via GraphQL createLocalPaymentContext
+      const contextResponse = await fetch('/api/crypto-payment-context', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amount,
+          currency: 'USD',
+          countryCode: 'US',
+          returnUrl: returnUrl,
+          cancelUrl: cancelUrl,
+          buyerDetails: { firstName, lastName, email },
+        }),
+      });
+
+      const contextData = await contextResponse.json();
+      console.log('Crypto payment context:', contextData);
+
+      if (!contextData.success) {
+        throw new Error(contextData.error || 'Failed to create payment context');
+      }
+
+      if (!contextData.approvalUrl) {
+        throw new Error(
+          'No approvalUrl returned. Ensure crypto is enabled on this merchant account ' +
+          'and BRAINTREE_CRYPTO_MERCHANT_ACCOUNT_ID is set in .env.'
+        );
+      }
+
+      // SDK triggers full-page redirect to PayPal crypto approval UI
+      await localPaymentInstance.startPayment({
+        paymentType: 'crypto',
+        cryptoOptions: { approvalUrl: contextData.approvalUrl },
+      });
+
+      // startPayment only resolves here if no redirect occurred (unexpected for crypto)
+    } catch (err) {
+      console.error('Crypto payment error:', err);
+      setCryptoLoadingState(false);
+      const msg = err.code ? '[' + err.code + '] ' + err.message : err.message;
+      cryptoError.textContent = msg;
+      cryptoError.style.display = 'block';
+    }
+  });
+}
+
+function setCryptoLoadingState(loading) {
+  const cryptoButton = document.getElementById('crypto-pay-button');
+  if (!cryptoButton) return;
+  cryptoButton.disabled = loading;
+  cryptoButton.querySelector('.button-text').style.display = loading ? 'none' : 'inline';
+  cryptoButton.querySelector('.loading-spinner').style.display = loading ? 'inline' : 'none';
+}
+
+// Process nonce returned from PayPal crypto redirect
+async function processCryptoReturn(nonce, amount) {
+  showResult('Completing crypto payment...', 'info');
+
+  try {
+    const response = await fetch('/api/crypto-sale', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentMethodNonce: nonce, amount: amount }),
+    });
+
+    const result = await response.json();
+    console.log('Crypto sale result:', result);
+
+    if (result.success) {
+      showResult(
+        'Crypto payment successful!<br>' +
+        'Transaction ID: ' + result.transaction.id + '<br>' +
+        'Amount: $' + result.transaction.amount + '<br>' +
+        'Type: ' + (result.transaction.paymentInstrumentType || 'Crypto'),
+        'success'
+      );
+    } else {
+      showResult('Crypto payment failed: ' + (result.error || 'Unknown error'), 'error');
+    }
+  } catch (err) {
+    console.error('Error completing crypto sale:', err);
+    showResult('Error completing crypto payment: ' + err.message, 'error');
+  }
+}
+
+// Check on page load whether we're returning from a crypto redirect
+(function handleCryptoRedirectReturn() {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get('cryptoCancelled')) {
+    // Clean up URL and show cancellation message after DOM is ready
+    window.history.replaceState({}, '', window.location.pathname);
+    document.addEventListener('DOMContentLoaded', function () {
+      showResult('Crypto payment was cancelled.', 'info');
+    });
+    return;
+  }
+
+  // Check known nonce param names; actual param TBD from PayPal's redirect
+  const nonce =
+    params.get('btLPToken') ||
+    params.get('paymentMethodNonce') ||
+    params.get('nonce') ||
+    params.get('token');
+  const amount = params.get('cryptoAmount');
+
+  if (nonce) {
+    console.log('Crypto redirect return detected. Nonce:', nonce, 'Amount:', amount);
+    // Clean up URL params
+    window.history.replaceState({}, '', window.location.pathname);
+    document.addEventListener('DOMContentLoaded', function () {
+      processCryptoReturn(nonce, amount || '10.00');
+    });
+  }
+})();
