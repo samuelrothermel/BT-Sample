@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:graphql.braintreepayments.com)",
+      "WebFetch(domain:developer.paypal.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:developers.braintreepayments.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:stackoverflow.com)",
+      "WebFetch(domain:web.archive.org)"
+    ]
+  }
+}

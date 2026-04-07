@@ -934,11 +934,13 @@ app.post('/api/crypto-payment-context', async (req, res) => {
     return res.status(400).json({ error: 'Valid amount is required' });
   }
 
-  // Use the crypto-specific merchant account ID from env, or fall back to the
-  // value passed by the client (allows overriding per request during testing)
+  // Use the default merchant ID unless a crypto-specific one is explicitly set.
+  // Per guidance: the correct value is the existing sandbox merchant account ID,
+  // not a separate "CRYPTO_USD" account. PayPal-side provisioning is what gates
+  // whether the approvalUrl flow works, not a separate BT merchant account.
   const cryptoMerchantAccountId =
-    merchantAccountId ||
     process.env.BRAINTREE_CRYPTO_MERCHANT_ACCOUNT_ID ||
+    merchantAccountId ||
     process.env.BRAINTREE_MERCHANT_ID;
 
   const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -958,7 +960,7 @@ app.post('/api/crypto-payment-context', async (req, res) => {
           createdAt
           amount {
             value
-            currencyIsoCode
+            currencyCode
           }
         }
       }
@@ -967,10 +969,10 @@ app.post('/api/crypto-payment-context', async (req, res) => {
 
   const variables = {
     input: {
-      // Try amount as a MonetaryAmount input object — field name from GraphQL schema
+      // Amount as a MonetaryAmount object with currencyCode (standard BT GraphQL schema)
       amount: {
         value: parseFloat(amount).toFixed(2),
-        currencyIsoCode: currency || 'USD',
+        currencyCode: currency || 'USD',
       },
       type: 'CRYPTO',
       merchantAccountId: cryptoMerchantAccountId,
