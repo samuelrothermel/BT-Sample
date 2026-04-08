@@ -957,7 +957,6 @@ app.post('/api/crypto-payment-context', async (req, res) => {
           paymentId
           approvalUrl
           merchantAccountId
-          createdAt
           amount {
             value
             currencyCode
@@ -969,19 +968,21 @@ app.post('/api/crypto-payment-context', async (req, res) => {
 
   const variables = {
     input: {
-      // Amount as a MonetaryAmount object with currencyCode (standard BT GraphQL schema)
-      amount: {
-        value: parseFloat(amount).toFixed(2),
-        currencyCode: currency || 'USD',
+      paymentContext: {
+        amount: {
+          value: parseFloat(amount).toFixed(2),
+          currencyCode: currency || 'USD',
+        },
+        type: 'CRYPTO',
+        returnUrl: resolvedReturnUrl,
+        cancelUrl: resolvedCancelUrl,
+        countryCode: req.body.countryCode || 'US',
+        payerInfo: {
+          givenName: buyerDetails?.firstName || 'Test',
+          surname: buyerDetails?.lastName || 'Buyer',
+          email: buyerDetails?.email || 'test@example.com',
+        },
       },
-      type: 'CRYPTO',
-      merchantAccountId: cryptoMerchantAccountId,
-      returnUrl: resolvedReturnUrl,
-      cancelUrl: resolvedCancelUrl,
-      countryCode: req.body.countryCode || 'US',
-      payerGivenName: buyerDetails?.firstName || 'Test',
-      payerSurname: buyerDetails?.lastName || 'Buyer',
-      payerEmail: buyerDetails?.email || 'test@example.com',
     },
   };
 
@@ -998,7 +999,7 @@ app.post('/api/crypto-payment-context', async (req, res) => {
   ).toString('base64');
 
   console.log('Creating crypto payment context via GraphQL:', {
-    amount: variables.input.amount,
+    amount: variables.input.amount?.value,
     merchantAccountId: cryptoMerchantAccountId,
     returnUrl: resolvedReturnUrl,
   });
