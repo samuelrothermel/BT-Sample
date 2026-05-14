@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Secure Testing Demo</title>
+    <link rel="stylesheet" href="3ds-secure.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>3D Secure Testing</h1>
+            <p>Test 3DS authentication scenarios with Braintree sandbox test cards</p>
+            <a href="index.html" class="back-link">← Back to Samples</a>
+        </header>
+
+        <main>
+            <div class="payment-form">
+                <h2>3DS Payment Form</h2>
+
+                <!-- Test Cards Reference -->
+                <div class="test-cards-info">
+                    <details open>
+                        <summary>🧪 3DS Test Cards by Scenario</summary>
+                        <div class="test-cards-content">
+                            <p class="note">All test cards use expiry <strong>01/[current year + 3]</strong> and CVV <strong>123</strong>. Disable ad blockers during testing.</p>
+
+                            <div class="scenario-group">
+                                <h4>No-Challenge Scenarios (frictionless)</h4>
+                                <table class="card-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Scenario</th>
+                                            <th>Visa</th>
+                                            <th>Mastercard</th>
+                                            <th>Amex</th>
+                                            <th>Discover</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="scenario-success">
+                                            <td><span class="badge badge-success">✓ Successful</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002701">4000...2701</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002235">5200...2235</button></td>
+                                            <td><button class="card-btn" data-card="340000000002708">3400...2708</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002117">6011...2117</button></td>
+                                        </tr>
+                                        <tr class="scenario-fail">
+                                            <td><span class="badge badge-fail">✗ Failed</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002925">4000...2925</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002276">5200...2276</button></td>
+                                            <td><button class="card-btn" data-card="340000000002096">3400...2096</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002364">6011...2364</button></td>
+                                        </tr>
+                                        <tr class="scenario-attempt">
+                                            <td><span class="badge badge-attempt">~ Attempt</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002719">4000...2719</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002482">5200...2482</button></td>
+                                            <td><button class="card-btn" data-card="340000000002872">3400...2872</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002646">6011...2646</button></td>
+                                        </tr>
+                                        <tr class="scenario-unavail">
+                                            <td><span class="badge badge-unavail">? Unavailable</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002313">4000...2313</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002268">5200...2268</button></td>
+                                            <td><button class="card-btn" data-card="340000000002922">3400...2922</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002612">6011...2612</button></td>
+                                        </tr>
+                                        <tr class="scenario-reject">
+                                            <td><span class="badge badge-reject">✗ Rejected</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002537">4000...2537</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002185">5200...2185</button></td>
+                                            <td><button class="card-btn" data-card="340000000002062">3400...2062</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002711">6011...2711</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="scenario-group">
+                                <h4>Error / Edge Case Scenarios</h4>
+                                <table class="card-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Scenario</th>
+                                            <th>Visa</th>
+                                            <th>Mastercard</th>
+                                            <th>Amex</th>
+                                            <th>Discover</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><span class="badge badge-info">Auth Not Available</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002990">4000...2990</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002409">5200...2409</button></td>
+                                            <td><button class="card-btn" data-card="340000000002468">3400...2468</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002836">6011...2836</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="badge badge-warn">Error on Lookup</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002446">4000...2446</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002037">5200...2037</button></td>
+                                            <td><button class="card-btn" data-card="340000000002732">3400...2732</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002315">6011...2315</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="badge badge-warn">Timeout on Lookup</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002354">4000...2354</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002326">5200...2326</button></td>
+                                            <td><button class="card-btn" data-card="340000000002047">3400...2047</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002869">6011...2869</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="badge badge-info">Bypassed Auth</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002560">4000...2560</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002508">5200...2508</button></td>
+                                            <td><button class="card-btn" data-card="340000000002948">3400...2948</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002976">6011...2976</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="scenario-group">
+                                <h4>Challenge Scenarios (user interaction required)</h4>
+                                <table class="card-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Scenario</th>
+                                            <th>Visa</th>
+                                            <th>Mastercard</th>
+                                            <th>Amex</th>
+                                            <th>Discover</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="scenario-success">
+                                            <td><span class="badge badge-success">✓ Challenge Success</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002503">4000...2503</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002151">5200...2151</button></td>
+                                            <td><button class="card-btn" data-card="340000000002534">3400...2534</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002265">6011...2265</button></td>
+                                        </tr>
+                                        <tr class="scenario-fail">
+                                            <td><span class="badge badge-fail">✗ Challenge Failed</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002370">4000...2370</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002490">5200...2490</button></td>
+                                            <td><button class="card-btn" data-card="340000000002237">3400...2237</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002695">6011...2695</button></td>
+                                        </tr>
+                                        <tr class="scenario-unavail">
+                                            <td><span class="badge badge-unavail">? Challenge Unavail</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002420">4000...2420</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002664">5200...2664</button></td>
+                                            <td><button class="card-btn" data-card="340000000002484">3400...2484</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002851">6011...2851</button></td>
+                                        </tr>
+                                        <tr class="scenario-fail">
+                                            <td><span class="badge badge-fail">✗ Error on Auth</span></td>
+                                            <td><button class="card-btn" data-card="4000000000002644">4000...2644</button></td>
+                                            <td><button class="card-btn" data-card="5200000000002656">5200...2656</button></td>
+                                            <td><button class="card-btn" data-card="340000000002351">3400...2351</button></td>
+                                            <td><button class="card-btn" data-card="6011000000002570">6011...2570</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="scenario-group">
+                                <h4>Special Scenarios</h4>
+                                <table class="card-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Scenario</th>
+                                            <th>Card Number</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><span class="badge badge-info">Data Only (MC)</span></td>
+                                            <td><button class="card-btn" data-card="5119737947565580">5119...5580</button></td>
+                                            <td>Requires <code>dataOnlyRequested: true</code></td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="badge badge-warn">Soft Decline</span></td>
+                                            <td><em>Any card</em></td>
+                                            <td>Use amount <button class="card-btn amount-btn" data-amount="20.99">$20.99</button> to trigger soft decline</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- 3DS Options -->
+                <div class="options-section">
+                    <h3>3DS Options</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="require-3ds"> Require successful 3DS auth
+                            </label>
+                            <small class="field-note">If checked, transaction fails when 3DS auth is not successful</small>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="data-only-requested"> Data Only Requested
+                            </label>
+                            <small class="field-note">Use with Mastercard data-only card (5119...5580)</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Amount -->
+                <div class="form-group">
+                    <label for="amount">Amount ($)</label>
+                    <input type="number" id="amount" min="0.01" step="0.01" value="10.00" required>
+                    <small class="field-note">Use $20.99 to trigger a soft decline scenario</small>
+                </div>
+
+                <!-- Card form -->
+                <form id="payment-form">
+                    <div class="form-group">
+                        <label for="card-number">Card Number</label>
+                        <div id="card-number" class="hosted-field"></div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="expiration-date">Expiration Date</label>
+                            <div id="expiration-date" class="hosted-field"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cvv">CVV</label>
+                            <div id="cvv" class="hosted-field"></div>
+                        </div>
+                    </div>
+
+                    <!-- Billing info required for 3DS -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="first-name">First Name</label>
+                            <input type="text" id="first-name" value="John" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="last-name">Last Name</label>
+                            <input type="text" id="last-name" value="Doe" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" value="test@example.com" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="phone">Phone</label>
+                            <input type="tel" id="phone" value="5105551234">
+                        </div>
+                        <div class="form-group">
+                            <label for="postal-code-input">Postal Code</label>
+                            <input type="text" id="postal-code-input" value="94107">
+                        </div>
+                    </div>
+
+                    <button type="submit" id="submit-button" disabled>
+                        <span class="button-text">Pay with 3DS</span>
+                        <span class="loading-spinner" style="display: none;">Processing...</span>
+                    </button>
+                </form>
+
+                <!-- 3DS Status indicator -->
+                <div id="threeds-status" class="threeds-status" style="display: none;">
+                    <div class="status-step" id="step-verify">
+                        <span class="step-icon">⟳</span> Verifying with 3DS...
+                    </div>
+                </div>
+
+                <!-- Result -->
+                <div id="result" class="result"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Braintree Client SDK -->
+    <script src="https://js.braintreegateway.com/web/3.97.2/js/client.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.97.2/js/hosted-fields.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.97.2/js/three-d-secure.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.97.2/js/data-collector.min.js"></script>
+
+    <script src="3ds-secure.js"></script>
+</body>
+</html>

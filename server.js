@@ -1316,6 +1316,56 @@ app.post('/api/capture', async (req, res) => {
   }
 });
 
+// Process 3D Secure sale — expects a nonce already verified client-side via threeDSecure.verifyCard()
+app.post('/api/3ds-sale', async (req, res) => {
+  const { paymentMethodNonce, amount, deviceData } = req.body;
+
+  if (!paymentMethodNonce) {
+    return res.status(400).json({ error: 'paymentMethodNonce is required' });
+  }
+
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    return res.status(400).json({ error: 'Valid amount is required' });
+  }
+
+  try {
+    const transactionData = {
+      amount: parseFloat(amount).toFixed(2),
+      paymentMethodNonce: paymentMethodNonce,
+      options: {
+        submitForSettlement: true,
+      },
+    };
+
+    if (deviceData) {
+      transactionData.deviceData = deviceData;
+    }
+
+    console.log('3DS sale data:', JSON.stringify(transactionData, null, 2));
+
+    const result = await gateway.transaction.sale(transactionData);
+
+    if (result.success) {
+      console.log('3DS transaction successful:', result.transaction.id);
+      res.json({
+        success: true,
+        transaction: {
+          id: result.transaction.id,
+          status: result.transaction.status,
+          amount: result.transaction.amount,
+          threeDSecureInfo: result.transaction.threeDSecureInfo,
+        },
+      });
+    } else {
+      console.error('3DS transaction failed:', result.message);
+      res.status(400).json({ success: false, error: result.message });
+    }
+  } catch (error) {
+    console.error('Error processing 3DS sale:', error);
+    res.status(500).json({ success: false, error: 'Failed to process transaction: ' + error.message });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
