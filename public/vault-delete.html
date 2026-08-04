@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vault Delete Tool - Braintree Demo</title>
+    <link rel="stylesheet" href="vault-delete.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Vault Delete Tool</h1>
+            <p>Delete vaulted records by customer ID or payment method token</p>
+            <a href="index.html" class="back-link">← Back to Samples</a>
+        </header>
+
+        <section class="info-box">
+            <h2>How this works</h2>
+            <p>Select what you want to delete, enter the ID, and submit. The page calls <strong>POST /api/vault/delete</strong> and shows each request/response pair in the API log below.</p>
+            <p>Warning: Deleting a customer removes that customer and all associated vaulted payment methods.</p>
+        </section>
+
+        <section class="form-card">
+            <h2>Delete Vault Record</h2>
+
+            <form id="vault-delete-form">
+                <div class="form-group">
+                    <label for="delete-type">Delete Type</label>
+                    <select id="delete-type" required>
+                        <option value="customer">Customer ID</option>
+                        <option value="paymentMethod">Payment Method Token</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="record-id" id="record-id-label">Customer ID</label>
+                    <input
+                        type="text"
+                        id="record-id"
+                        placeholder="e.g., a_customer_123"
+                        autocomplete="off"
+                        required
+                    >
+                    <small id="record-id-help" class="hint">Enter the customer ID to delete.</small>
+                </div>
+
+                <button type="submit" id="submit-button" class="submit-button">Delete Vault Record</button>
+            </form>
+        </section>
+
+        <section id="result" class="result" style="display: none;"></section>
+
+        <section class="logs-card">
+            <div class="logs-header">
+                <h2>API Request/Response Log</h2>
+                <button id="clear-logs" type="button" class="clear-button">Clear Logs</button>
+            </div>
+            <div id="api-logs" class="api-logs">
+                <p class="empty-state">No requests yet. Submit the form to begin logging.</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="vault-delete.js"></script>
+</body>
+</html>

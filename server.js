@@ -249,6 +249,7 @@ app.post('/api/sale', async (req, res) => {
     vault,
     options,
     merchantAccountId,
+    surcharge,
   } = req.body;
 
   if (!paymentMethodNonce && !paymentMethodToken && !bankAccount) {
@@ -276,6 +277,14 @@ app.post('/api/sale', async (req, res) => {
       console.log(
         'Processing transaction with merchant account:',
         merchantAccountId,
+      );
+    }
+
+    // Add surcharge if provided (surchargeAmount added to SDK in v3.38.0)
+    if (surcharge && surcharge.amount) {
+      transactionData.surchargeAmount = parseFloat(surcharge.amount).toFixed(2);
+      console.log(
+        `Processing transaction with surcharge: $${surcharge.amount}`,
       );
     }
 
@@ -346,6 +355,9 @@ app.post('/api/sale', async (req, res) => {
           amount: result.transaction.amount,
           // Include PayPal details if available
           paypal: result.transaction.paypal,
+          // Include surcharge details if present
+          surchargeAmount: result.transaction.surchargeAmount,
+          surchargeLevel: result.transaction.surchargeLevel,
         },
       };
 
@@ -945,7 +957,8 @@ app.post('/api/crypto-payment-context', async (req, res) => {
 
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   const resolvedReturnUrl = returnUrl || `${baseUrl}/pay-with-crypto.html`;
-  const resolvedCancelUrl = cancelUrl || `${baseUrl}/pay-with-crypto.html?cancelled=true`;
+  const resolvedCancelUrl =
+    cancelUrl || `${baseUrl}/pay-with-crypto.html?cancelled=true`;
 
   // GraphQL mutation from the integration guide
   const mutation = `
@@ -988,14 +1001,15 @@ app.post('/api/crypto-payment-context', async (req, res) => {
 
   // Braintree GraphQL endpoint (sandbox vs production)
   const isSandbox =
-    (process.env.BRAINTREE_ENVIRONMENT || 'sandbox').toLowerCase() !== 'production';
+    (process.env.BRAINTREE_ENVIRONMENT || 'sandbox').toLowerCase() !==
+    'production';
   const graphqlUrl = isSandbox
     ? 'https://payments.sandbox.braintree-api.com/graphql'
     : 'https://payments.braintree-api.com/graphql';
 
   // Basic auth: public_key:private_key encoded as Base64
   const credentials = Buffer.from(
-    `${process.env.BRAINTREE_PUBLIC_KEY}:${process.env.BRAINTREE_PRIVATE_KEY}`
+    `${process.env.BRAINTREE_PUBLIC_KEY}:${process.env.BRAINTREE_PRIVATE_KEY}`,
   ).toString('base64');
 
   console.log('Creating crypto payment context via GraphQL:', {
@@ -1016,15 +1030,17 @@ app.post('/api/crypto-payment-context', async (req, res) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Basic ${credentials}`,
+          Authorization: `Basic ${credentials}`,
           'Braintree-Version': '2019-01-01',
           'Content-Length': Buffer.byteLength(body),
         },
       };
 
-      const request = https.request(options, (response) => {
+      const request = https.request(options, response => {
         let data = '';
-        response.on('data', (chunk) => { data += chunk; });
+        response.on('data', chunk => {
+          data += chunk;
+        });
         response.on('end', () => {
           try {
             resolve({ status: response.statusCode, body: JSON.parse(data) });
@@ -1040,7 +1056,10 @@ app.post('/api/crypto-payment-context', async (req, res) => {
     });
 
     console.log('GraphQL response status:', graphqlResponse.status);
-    console.log('GraphQL response body:', JSON.stringify(graphqlResponse.body, null, 2));
+    console.log(
+      'GraphQL response body:',
+      JSON.stringify(graphqlResponse.body, null, 2),
+    );
 
     const gqlBody = graphqlResponse.body;
 
@@ -1054,7 +1073,8 @@ app.post('/api/crypto-payment-context', async (req, res) => {
       });
     }
 
-    const paymentContext = gqlBody.data?.createLocalPaymentContext?.paymentContext;
+    const paymentContext =
+      gqlBody.data?.createLocalPaymentContext?.paymentContext;
     if (!paymentContext) {
       return res.status(500).json({
         success: false,
@@ -1088,7 +1108,10 @@ app.post('/api/crypto-payment-context', async (req, res) => {
       type: paymentContext.type,
     });
   } catch (error) {
-    console.error('Error calling Braintree GraphQL for crypto payment context:', error);
+    console.error(
+      'Error calling Braintree GraphQL for crypto payment context:',
+      error,
+    );
     res.status(500).json({
       success: false,
       error: 'Failed to create crypto payment context: ' + error.message,
@@ -1110,7 +1133,10 @@ app.post('/api/crypto-sale', async (req, res) => {
   }
 
   try {
-    console.log('Processing crypto transaction with nonce:', paymentMethodNonce);
+    console.log(
+      'Processing crypto transaction with nonce:',
+      paymentMethodNonce,
+    );
 
     const result = await gateway.transaction.sale({
       amount: parseFloat(amount).toFixed(2),
@@ -1122,7 +1148,10 @@ app.post('/api/crypto-sale', async (req, res) => {
 
     if (result.success) {
       console.log('Crypto transaction successful:', result.transaction.id);
-      console.log('Full transaction result:', JSON.stringify(result.transaction, null, 2));
+      console.log(
+        'Full transaction result:',
+        JSON.stringify(result.transaction, null, 2),
+      );
 
       res.json({
         success: true,
@@ -1362,7 +1391,95 @@ app.post('/api/3ds-sale', async (req, res) => {
     }
   } catch (error) {
     console.error('Error processing 3DS sale:', error);
-    res.status(500).json({ success: false, error: 'Failed to process transaction: ' + error.message });
+    res
+      .status(500)
+      .json({
+        success: false,
+        error: 'Failed to process transaction: ' + error.message,
+      });
+  }
+});
+
+// Delete vaulted records by customer ID or payment method token
+app.post('/api/vault/delete', async (req, res) => {
+  const { deleteType, id } = req.body;
+
+  if (!deleteType || !['customer', 'paymentMethod'].includes(deleteType)) {
+    return res.status(400).json({
+      success: false,
+      error: "deleteType is required and must be 'customer' or 'paymentMethod'",
+    });
+  }
+
+  if (!id || typeof id !== 'string' || !id.trim()) {
+    return res.status(400).json({
+      success: false,
+      error: 'A valid id is required',
+    });
+  }
+
+  const normalizedId = id.trim();
+
+  try {
+    if (deleteType === 'customer') {
+      const customer = await gateway.customer.find(normalizedId);
+
+      await gateway.customer.delete(normalizedId);
+
+      return res.json({
+        success: true,
+        deleteType: 'customer',
+        deletedId: normalizedId,
+        customer: {
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          email: customer.email,
+          paymentMethodCount: customer.paymentMethods
+            ? customer.paymentMethods.length
+            : 0,
+        },
+      });
+    }
+
+    const paymentMethod = await gateway.paymentMethod.find(normalizedId);
+
+    await gateway.paymentMethod.delete(normalizedId);
+
+    return res.json({
+      success: true,
+      deleteType: 'paymentMethod',
+      deletedId: normalizedId,
+      paymentMethod: {
+        token: paymentMethod.token,
+        customerId: paymentMethod.customerId || null,
+        default: Boolean(paymentMethod.default),
+        type:
+          paymentMethod.paymentInstrumentName ||
+          paymentMethod.cardType ||
+          paymentMethod.paymentMethodType ||
+          'Unknown',
+      },
+    });
+  } catch (error) {
+    console.error('Error deleting vaulted record:', error);
+
+    const isNotFound =
+      (error.type && error.type === 'notFoundError') ||
+      (error.name && error.name === 'notFoundError') ||
+      (error.message && /not\s*found/i.test(error.message));
+
+    if (isNotFound) {
+      return res.status(404).json({
+        success: false,
+        error: `${deleteType} with id '${normalizedId}' was not found`,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to delete vaulted record: ' + error.message,
+    });
   }
 });
 

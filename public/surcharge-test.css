@@ -1,0 +1,203 @@
+/* Import shared styles */
+@import url('styles.css');
+
+/* Surcharge-specific styles */
+
+.surcharge-info,
+.test-cards-info {
+    margin-bottom: 1.5rem;
+}
+
+.surcharge-info details,
+.test-cards-info details {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.surcharge-info summary,
+.test-cards-info summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #495057;
+    user-select: none;
+    padding: 0.5rem 0;
+}
+
+.surcharge-info summary:hover,
+.test-cards-info summary:hover {
+    color: #212529;
+}
+
+.info-content,
+.test-cards-content {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.info-content p,
+.test-cards-content p {
+    margin: 0.5rem 0;
+    color: #495057;
+    font-size: 0.95rem;
+}
+
+.info-content ul,
+.test-cards-content ul {
+    margin: 0.75rem 0;
+    padding-left: 1.5rem;
+}
+
+.info-content li,
+.test-cards-content li {
+    margin: 0.5rem 0;
+    color: #495057;
+}
+
+.note {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 0.75rem;
+    margin-top: 1rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.helper-text {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.total-display {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 0.5rem 0;
+    font-size: 1rem;
+    padding: 0.5rem 0;
+}
+
+.total-final {
+    border-top: 2px solid rgba(255, 255, 255, 0.3);
+    margin-top: 0.75rem;
+    padding-top: 1rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.total-row span:first-child {
+    opacity: 0.9;
+}
+
+.total-row span:last-child {
+    font-weight: 600;
+}
+
+/* Form styling */
+select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    background-color: white;
+}
+
+select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .total-display {
+        padding: 1rem;
+    }
+
+    .total-final {
+        font-size: 1.1rem;
+    }
+}
+
+/* Mode toggle */
+.mode-toggle {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.mode-label {
+    display: block;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.mode-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.mode-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    cursor: pointer;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.mode-option:has(input:checked) {
+    border-color: #667eea;
+    background: #eef0fd;
+}
+
+.mode-option input[type="radio"] {
+    margin-top: 3px;
+    flex-shrink: 0;
+    accent-color: #667eea;
+}
+
+.mode-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.mode-text strong {
+    font-size: 0.95rem;
+    color: #212529;
+}
+
+.mode-text small {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.mode-text code {
+    background: #e9ecef;
+    padding: 0 3px;
+    border-radius: 3px;
+    font-size: 0.78rem;
+}

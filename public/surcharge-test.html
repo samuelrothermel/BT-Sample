@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Braintree Surcharge Test</title>
+    <link rel="stylesheet" href="surcharge-test.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Braintree Surcharge Test</h1>
+            <p>Testing surcharge functionality in Braintree Sandbox</p>
+            <a href="index.html" class="back-link">← Back to Samples</a>
+        </header>
+
+        <main>
+            <div class="payment-form">
+                <h2>Payment Information</h2>
+                
+                <!-- Surcharge Info -->
+                <div class="surcharge-info">
+                    <details open>
+                        <summary>ℹ️ About Surcharges</summary>
+                        <div class="info-content">
+                            <p><strong>What are surcharges?</strong></p>
+                            <p>Surcharges allow merchants to pass credit card processing fees to customers. The surcharge amount is displayed separately from the base transaction amount.</p>
+                            <p><strong>Surcharge Levels:</strong></p>
+                            <ul>
+                                <li><strong>Network Level:</strong> Applied at the card network level (Visa, Mastercard, etc.)</li>
+                                <li><strong>Brand Level:</strong> Applied at the card brand level (credit vs. debit)</li>
+                            </ul>
+                            <p class="note">Note: Surcharges are subject to legal restrictions in some jurisdictions. Always check local regulations.</p>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Test Card Information -->
+                <div class="test-cards-info">
+                    <details>
+                        <summary>🧪 Test Cards</summary>
+                        <div class="test-cards-content">
+                            <ul>
+                                <li><strong>Visa:</strong> 4111111111111111</li>
+                                <li><strong>Mastercard:</strong> 5555555555554444</li>
+                                <li><strong>American Express:</strong> 378282246310005</li>
+                                <li><strong>Discover:</strong> 6011111111111117</li>
+                            </ul>
+                            <p>Any future expiration date and 3-4 digit CVV</p>
+                        </div>
+                    </details>
+                </div>
+                
+                <!-- Mode toggle -->
+                <div class="mode-toggle">
+                    <label class="mode-label">Surcharge Mode:</label>
+                    <div class="mode-options">
+                        <label class="mode-option">
+                            <input type="radio" name="surcharge-mode" value="real" id="mode-real">
+                            <span class="mode-text">
+                                <strong>Real</strong>
+                                <small>Sends <code>surchargeAmount</code> to Braintree — requires merchant account provisioning</small>
+                            </span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="surcharge-mode" value="simulated" id="mode-simulated" checked>
+                            <span class="mode-text">
+                                <strong>Simulated</strong>
+                                <small>Sends only the total amount — surcharge shown in UI only</small>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Amount and Surcharge inputs -->
+                <div class="form-group">
+                    <label for="base-amount">Base Amount ($)</label>
+                    <input type="number" id="base-amount" min="0.01" step="0.01" value="100.00" required>
+                    <small class="helper-text">The original transaction amount before surcharge</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="surcharge-amount">Surcharge Amount ($)</label>
+                    <input type="number" id="surcharge-amount" min="0.00" step="0.01" value="3.00" required>
+                    <small class="helper-text">Additional fee added to the transaction</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="surcharge-level">Surcharge Level</label>
+                    <select id="surcharge-level" required>
+                        <option value="network_level">Network Level</option>
+                        <option value="brand_level">Brand Level</option>
+                    </select>
+                    <small class="helper-text">How the surcharge is categorized</small>
+                </div>
+
+                <div class="total-display">
+                    <div class="total-row">
+                        <span>Base Amount:</span>
+                        <span id="display-base">$100.00</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Surcharge:</span>
+                        <span id="display-surcharge">$3.00</span>
+                    </div>
+                    <div class="total-row total-final">
+                        <span>Total Amount:</span>
+                        <span id="display-total">$103.00</span>
+                    </div>
+                </div>
+
+                <!-- Hosted Fields form -->
+                <form id="payment-form">
+                    <div class="form-group">
+                        <label for="card-number">Card Number</label>
+                        <div id="card-number" class="hosted-field"></div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="expiration-date">Expiration Date</label>
+                            <div id="expiration-date" class="hosted-field"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="cvv">CVV</label>
+                            <div id="cvv" class="hosted-field"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="postal-code">Postal Code</label>
+                        <div id="postal-code" class="hosted-field"></div>
+                    </div>
+
+                    <button type="submit" id="submit-button" disabled>
+                        <span class="button-text">Process Payment with Surcharge</span>
+                        <span class="loading-spinner" style="display: none;">Processing...</span>
+                    </button>
+                </form>
+
+                <!-- Result Display -->
+                <div id="result" class="result" style="display: none;"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://js.braintreegateway.com/web/3.103.0/js/client.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.103.0/js/hosted-fields.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.103.0/js/data-collector.min.js"></script>
+    <script src="surcharge-test.js"></script>
+</body>
+</html>
