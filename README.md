@@ -17,6 +17,8 @@ A comprehensive Express.js application demonstrating multiple Braintree payment 
 - Credit/Debit Cards (Visa, Mastercard, Amex, Discover)
 - PayPal (Standard & Vault Flow)
 - Venmo (Mobile & Desktop with QR codes)
+- Dedicated Venmo Sandbox testing page (enablement, auth-only, compliance summaries)
+- Returning Payer + Pay Later Drop-in (guest/returning, vault all methods)
 - Google Pay
 - Apple Pay
 - ACH Bank Transfers
@@ -52,6 +54,8 @@ BRAINTREE_ENVIRONMENT=sandbox
 BRAINTREE_MERCHANT_ID=your_merchant_id_here
 BRAINTREE_PUBLIC_KEY=your_public_key_here
 BRAINTREE_PRIVATE_KEY=your_private_key_here
+# Optional: set after Venmo sandbox whitelist (shown on /venmo-sandbox.html)
+VENMO_PROFILE_ID=your_venmo_profile_id_here
 PORT=3000
 ```
 
@@ -76,6 +80,8 @@ npm start
    - **Hosted Fields**: Full-featured card and alternative payments
    - **Hosted Fields CAD**: Multi-currency (Canadian Dollar) support
    - **ACH Only**: Dedicated bank account payment testing
+   - **Venmo Sandbox**: US/USD Venmo with sandbox enablement, auth-only capture flow, and compliance order summaries
+   - **Returning Payer + Pay Later**: Guest/returning Drop-in with Pay Later and vault-all payment methods
    - **Hosted Fields Vaulted**: Payment vaulting with all payment methods
    - **Vaulted Token Sale**: Process new transactions with previously saved tokens (great for testing ACH recurring payments!)
    - **Drop-in UI**: Pre-built payment interface

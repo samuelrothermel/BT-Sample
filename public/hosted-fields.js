@@ -483,6 +483,9 @@ async function initializeVenmo(clientInstance, useDesktopMode = true) {
     const venmoConfig = {
       client: clientInstance,
       paymentMethodUsage: 'single_use',
+      // Required in sandbox so the button does not hit production Venmo
+      enableVenmoSandbox: true,
+      mobileWebFallBack: true,
     };
 
     if (useDesktopMode) {

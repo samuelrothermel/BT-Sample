@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venmo Sandbox Testing – Braintree</title>
+    <link rel="stylesheet" href="venmo-sandbox.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Venmo Sandbox Testing</h1>
+            <p>US / USD auth-then-capture flow (CompTIA-aligned)</p>
+            <a href="index.html" class="back-link">← Back to Samples</a>
+        </header>
+
+        <main>
+            <section class="info-panel">
+                <details open>
+                    <summary>Enablement gates &amp; testing notes</summary>
+                    <div class="info-content">
+                        <ol>
+                            <li><strong>Send your Sandbox Public ID</strong> (shown below) for Venmo whitelist + profile ID issuance. Testing will fail until that is confirmed.</li>
+                            <li>Wire client with <code>enableVenmoSandbox: true</code>, <code>profileId</code>, <code>paymentMethodUsage: 'single_use'</code>, desktop QR + mobile web fallback.</li>
+                            <li>Authorize only (<code>submit_for_settlement: false</code>); capture later. Amounts must be <strong>USD</strong>.</li>
+                            <li>Sandbox captures do <strong>not</strong> debit the test Venmo balance — confirm via transaction status/IDs.</li>
+                            <li>Venmo authorizations hold ~<strong>10 days</strong> before expiring.</li>
+                        </ol>
+                        <p class="compliance-note">Compliance: show an order summary pre- and post-purchase (items, total, Venmo, customer name + Venmo username).</p>
+                    </div>
+                </details>
+            </section>
+
+            <section class="config-panel">
+                <h2>1. Sandbox config</h2>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <label>Sandbox Public ID</label>
+                        <div class="copy-row">
+                            <code id="sandbox-public-id">Loading…</code>
+                            <button type="button" id="copy-public-id" class="btn-secondary" disabled>Copy</button>
+                        </div>
+                        <small>Send this to your PayPal contact for Venmo sandbox enablement.</small>
+                    </div>
+                    <div class="config-item">
+                        <label>Merchant ID</label>
+                        <code id="merchant-id">Loading…</code>
+                    </div>
+                    <div class="config-item">
+                        <label>Environment</label>
+                        <code id="environment">Loading…</code>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="venmo-profile-id">Venmo Profile ID</label>
+                    <input type="text" id="venmo-profile-id" placeholder="Paste profile ID once enablement is confirmed" autocomplete="off">
+                    <small>Required after whitelist. Stored in this browser until you clear it. Can also set <code>VENMO_PROFILE_ID</code> in <code>.env</code>.</small>
+                </div>
+
+                <div class="form-group checkbox-row">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="enable-venmo-sandbox" checked>
+                        <span>enableVenmoSandbox</span>
+                    </label>
+                    <small>Required in sandbox. Disable / remove for production.</small>
+                </div>
+
+                <button type="button" id="init-venmo-btn" class="btn-primary">Initialize Venmo</button>
+                <div id="init-status" class="status-line" aria-live="polite"></div>
+            </section>
+
+            <section class="checkout-panel" id="checkout-panel">
+                <h2>2. Order summary (pre-purchase)</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="customer-name">Customer name</label>
+                        <input type="text" id="customer-name" value="Alex Customer" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="item-name">Item</label>
+                        <input type="text" id="item-name" value="CompTIA Exam Voucher" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="amount">Total (USD)</label>
+                    <input type="number" id="amount" min="0.01" step="0.01" value="49.00" required>
+                </div>
+
+                <div class="order-summary" id="pre-order-summary">
+                    <div class="summary-row"><span>Item</span><strong id="summary-item">CompTIA Exam Voucher</strong></div>
+                    <div class="summary-row"><span>Payment method</span><strong>Venmo</strong></div>
+                    <div class="summary-row"><span>Customer</span><strong id="summary-customer">Alex Customer</strong></div>
+                    <div class="summary-row total"><span>Total</span><strong id="summary-total">$49.00 USD</strong></div>
+                </div>
+
+                <div id="venmo-unsupported" class="banner warn" hidden>
+                    Venmo is not supported in this browser. Try a supported mobile browser or desktop with QR enabled.
+                </div>
+
+                <div id="venmo-button" class="payment-button-container"></div>
+                <div id="venmo-username-live" class="username-live" hidden>
+                    Venmo username: <strong id="venmo-username-value"></strong>
+                </div>
+            </section>
+
+            <section class="result-panel" id="post-purchase" hidden>
+                <h2>3. Order summary (post-purchase)</h2>
+                <div class="order-summary success-summary">
+                    <div class="summary-row"><span>Item</span><strong id="post-item"></strong></div>
+                    <div class="summary-row"><span>Payment method</span><strong>Venmo</strong></div>
+                    <div class="summary-row"><span>Customer</span><strong id="post-customer"></strong></div>
+                    <div class="summary-row"><span>Venmo username</span><strong id="post-venmo-username"></strong></div>
+                    <div class="summary-row total"><span>Total</span><strong id="post-total"></strong></div>
+                </div>
+                <div id="auth-result" class="result success"></div>
+                <p class="hint">Capture within ~10 days via your existing capture path. Confirm success from transaction status/IDs — not sandbox balance.</p>
+            </section>
+
+            <div id="result" class="result" hidden></div>
+        </main>
+    </div>
+
+    <script src="https://js.braintreegateway.com/web/3.111.0/js/client.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.111.0/js/venmo.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.111.0/js/data-collector.min.js"></script>
+    <script src="venmo-sandbox.js"></script>
+</body>
+</html>

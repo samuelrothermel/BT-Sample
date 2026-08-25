@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Returning Payer + Pay Later – Braintree</title>
+    <link rel="stylesheet" href="returning-payer.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Returning Payer Checkout</h1>
+            <p>Guest &amp; returning users · Pay Later · vault all payment methods</p>
+            <a href="index.html" class="back-link">← Back to Samples</a>
+        </header>
+
+        <main>
+            <section class="info-panel">
+                <details open>
+                    <summary>What this page tests</summary>
+                    <div class="info-content">
+                        <ul>
+                            <li><strong>Guest:</strong> create a customer by email, then pay and vault every method used.</li>
+                            <li><strong>Returning:</strong> look up by Customer ID or email; Drop-in loads vaulted methods via a customer-scoped client token.</li>
+                            <li><strong>Pay Later:</strong> Drop-in <code>paypalCredit</code> (use $30+).</li>
+                            <li><strong>Vaulting:</strong> cards, PayPal (Checkout with Vault), Venmo, Google Pay, and Apple Pay are stored on the customer.</li>
+                        </ul>
+                        <p class="note">Copy the Customer ID from a successful guest checkout, then switch to Returning to verify saved methods appear.</p>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Step 1: Mode -->
+            <section class="step-panel" id="step-identity">
+                <h2>1. Payer type</h2>
+                <div class="mode-toggle" role="group" aria-label="Payer type">
+                    <button type="button" class="mode-btn active" data-mode="guest" id="mode-guest">Guest</button>
+                    <button type="button" class="mode-btn" data-mode="returning" id="mode-returning">Returning</button>
+                </div>
+
+                <div id="guest-fields" class="identity-fields">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="guest-email">Email *</label>
+                            <input type="email" id="guest-email" placeholder="guest@example.com" value="guest@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="guest-first-name">First name</label>
+                            <input type="text" id="guest-first-name" value="Alex" placeholder="Alex">
+                        </div>
+                        <div class="form-group">
+                            <label for="guest-last-name">Last name</label>
+                            <input type="text" id="guest-last-name" value="Guest" placeholder="Guest">
+                        </div>
+                    </div>
+                    <p class="hint">If this email already has a Braintree customer, that record is reused (upgrade to returning).</p>
+                </div>
+
+                <div id="returning-fields" class="identity-fields" hidden>
+                    <div class="form-group">
+                        <label for="returning-customer-id">Customer ID</label>
+                        <input type="text" id="returning-customer-id" placeholder="Paste Customer ID from a prior vaulted sale" autocomplete="off">
+                    </div>
+                    <div class="or-divider"><span>or</span></div>
+                    <div class="form-group">
+                        <label for="returning-email">Email</label>
+                        <input type="email" id="returning-email" placeholder="returning@example.com">
+                    </div>
+                </div>
+
+                <button type="button" id="continue-btn" class="btn-primary">Continue to payment</button>
+                <div id="identity-status" class="status-line" aria-live="polite"></div>
+            </section>
+
+            <!-- Step 2: Customer summary + Drop-in -->
+            <section class="step-panel" id="step-checkout" hidden>
+                <h2>2. Payment</h2>
+
+                <div class="customer-banner" id="customer-banner">
+                    <div>
+                        <span class="badge" id="payer-badge">Guest</span>
+                        <strong id="customer-label">—</strong>
+                    </div>
+                    <div class="customer-id-row">
+                        <span>Customer ID:</span>
+                        <code id="active-customer-id">—</code>
+                        <button type="button" id="copy-customer-id" class="btn-secondary btn-small">Copy</button>
+                    </div>
+                    <div id="vaulted-methods" class="vaulted-methods" hidden>
+                        <h3>Vaulted methods</h3>
+                        <ul id="vaulted-methods-list"></ul>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="amount">Amount ($)</label>
+                    <input type="number" id="amount" min="0.01" step="0.01" value="30.00" required>
+                    <small>Pay Later typically requires $30+. Changing amount updates PayPal / Pay Later / Google Pay / Apple Pay.</small>
+                </div>
+
+                <div id="dropin-container" class="dropin-wrapper"></div>
+
+                <button type="button" id="submit-button" class="btn-primary" disabled>
+                    <span class="button-text">Pay &amp; vault payment method</span>
+                    <span class="loading-spinner" hidden>Processing…</span>
+                </button>
+
+                <button type="button" id="reset-btn" class="btn-secondary btn-block">Start over</button>
+            </section>
+
+            <div id="result" class="result" hidden></div>
+        </main>
+    </div>
+
+    <script async src="https://pay.google.com/gp/p/js/pay.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.111.0/js/client.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/dropin/1.44.0/js/dropin.min.js"></script>
+    <script src="returning-payer.js"></script>
+</body>
+</html>

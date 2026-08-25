@@ -58,12 +58,204 @@ app.get('/client_token', async (req, res) => {
       );
     }
 
+    // Returning payers: include customerId so Drop-in shows vaulted methods
+    if (req.query.customerId) {
+      tokenConfig.customerId = req.query.customerId;
+      console.log(
+        'Generating client token for customer:',
+        req.query.customerId,
+      );
+    }
+
     const response = await gateway.clientToken.generate(tokenConfig);
-    res.json({ clientToken: response.clientToken });
+    res.json({
+      clientToken: response.clientToken,
+      customerId: req.query.customerId || null,
+    });
   } catch (error) {
     console.error('Error generating client token:', error);
     res.status(500).json({ error: 'Failed to generate client token' });
   }
+});
+
+// Find or create a customer for guest / returning-payer checkout
+app.post('/api/customer/ensure', async (req, res) => {
+  const { email, firstName, lastName, customerId } = req.body;
+
+  try {
+    // Prefer explicit customer ID (returning payer)
+    if (customerId) {
+      const existing = await gateway.customer.find(customerId);
+      return res.json({
+        success: true,
+        created: false,
+        customer: summarizeCustomer(existing),
+      });
+    }
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'email or customerId is required',
+      });
+    }
+
+    const matches = await searchCustomersByEmail(email);
+    if (matches.length > 0) {
+      const existing = matches[0];
+      console.log('Found existing customer by email:', existing.id);
+      return res.json({
+        success: true,
+        created: false,
+        customer: summarizeCustomer(existing),
+      });
+    }
+
+    const createResult = await gateway.customer.create({
+      email,
+      firstName: firstName || 'Guest',
+      lastName: lastName || 'Customer',
+    });
+
+    if (!createResult.success) {
+      return res.status(400).json({
+        success: false,
+        error: createResult.message,
+      });
+    }
+
+    console.log('Created customer:', createResult.customer.id);
+    return res.json({
+      success: true,
+      created: true,
+      customer: summarizeCustomer(createResult.customer),
+    });
+  } catch (error) {
+    console.error('Error ensuring customer:', error);
+    const notFound =
+      error.type === 'notFoundError' ||
+      (error.message && error.message.toLowerCase().includes('not found'));
+    res.status(notFound ? 404 : 500).json({
+      success: false,
+      error: notFound
+        ? 'Customer not found'
+        : 'Failed to ensure customer: ' + error.message,
+    });
+  }
+});
+
+// Get customer + vaulted payment method summary
+app.get('/api/customer/:id', async (req, res) => {
+  try {
+    const customer = await gateway.customer.find(req.params.id);
+    res.json({
+      success: true,
+      customer: summarizeCustomer(customer),
+    });
+  } catch (error) {
+    console.error('Error fetching customer:', error);
+    res.status(404).json({
+      success: false,
+      error: 'Customer not found',
+    });
+  }
+});
+
+function summarizeCustomer(customer) {
+  const paymentMethods = [];
+
+  (customer.creditCards || []).forEach((card) => {
+    paymentMethods.push({
+      type: 'CreditCard',
+      token: card.token,
+      label: `${card.cardType} ending in ${card.last4}`,
+      default: card.default,
+    });
+  });
+
+  (customer.paypalAccounts || []).forEach((pp) => {
+    paymentMethods.push({
+      type: 'PayPalAccount',
+      token: pp.token,
+      label: pp.email || 'PayPal',
+      default: pp.default,
+    });
+  });
+
+  (customer.venmoAccounts || []).forEach((venmo) => {
+    paymentMethods.push({
+      type: 'VenmoAccount',
+      token: venmo.token,
+      label: venmo.username ? `@${venmo.username}` : 'Venmo',
+      default: venmo.default,
+    });
+  });
+
+  (customer.applePayCards || []).forEach((card) => {
+    paymentMethods.push({
+      type: 'ApplePayCard',
+      token: card.token,
+      label: `Apple Pay ${card.cardType || ''} ${card.last4 || ''}`.trim(),
+      default: card.default,
+    });
+  });
+
+  (customer.androidPayCards || []).forEach((card) => {
+    paymentMethods.push({
+      type: 'AndroidPayCard',
+      token: card.token,
+      label: `Google Pay ${card.cardType || ''} ${card.last4 || ''}`.trim(),
+      default: card.default,
+    });
+  });
+
+  return {
+    id: customer.id,
+    email: customer.email,
+    firstName: customer.firstName,
+    lastName: customer.lastName,
+    paymentMethodCount: paymentMethods.length,
+    paymentMethods,
+  };
+}
+
+function searchCustomersByEmail(email) {
+  return new Promise((resolve, reject) => {
+    const matches = [];
+    const stream = gateway.customer.search((search) => {
+      search.email().is(email);
+    });
+    stream.on('data', (customer) => matches.push(customer));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(matches));
+  });
+}
+
+// Venmo sandbox config for CompTIA / US testing (public ID + optional profile ID)
+app.get('/api/venmo-config', (req, res) => {
+  const environment =
+    (process.env.BRAINTREE_ENVIRONMENT || 'sandbox').toLowerCase() ===
+    'production'
+      ? 'production'
+      : 'sandbox';
+
+  res.json({
+    environment,
+    // Sandbox Public ID to send for Venmo whitelist enablement
+    sandboxPublicId: process.env.BRAINTREE_PUBLIC_KEY || null,
+    merchantId: process.env.BRAINTREE_MERCHANT_ID || null,
+    // Issued after PayPal/Braintree whitelist; optional until enablement is confirmed
+    venmoProfileId: process.env.VENMO_PROFILE_ID || null,
+    // Client must set enableVenmoSandbox: true in sandbox only
+    enableVenmoSandbox: environment === 'sandbox',
+    currency: 'USD',
+    notes: {
+      availability: 'Venmo is US-only and USD-only',
+      authHold: 'Venmo authorizations hold ~10 days before expiring',
+      sandboxBalance:
+        'Successful sandbox captures do not debit the test Venmo balance',
+    },
+  });
 });
 
 // Vault ACH payment method and process transaction
@@ -250,6 +442,9 @@ app.post('/api/sale', async (req, res) => {
     options,
     merchantAccountId,
     surcharge,
+    customerId,
+    customer,
+    deviceData,
   } = req.body;
 
   if (!paymentMethodNonce && !paymentMethodToken && !bankAccount) {
@@ -288,6 +483,10 @@ app.post('/api/sale', async (req, res) => {
       );
     }
 
+    if (deviceData) {
+      transactionData.deviceData = deviceData;
+    }
+
     // Handle different payment methods
     if (paymentMethodToken) {
       // Use a vaulted payment method token (bypasses verification)
@@ -317,23 +516,37 @@ app.post('/api/sale', async (req, res) => {
     if (vaultPaymentMethod || vault || (options && options.storeInVault)) {
       transactionData.options.storeInVaultOnSuccess = true;
 
-      // Create customer data for vaulting
-      let customerData = {};
-
-      if (billingAddress) {
-        customerData = {
-          firstName: billingAddress.firstName || 'Customer',
-          lastName: billingAddress.lastName || '',
-        };
+      if (customerId) {
+        // Attach vaulted method to an existing customer (returning / ensured guest)
+        transactionData.customerId = customerId;
+        console.log('Vaulting payment method to customer:', customerId);
       } else {
-        // Fallback for PayPal or when no billing address
-        customerData = {
-          firstName: 'Bank Account',
-          lastName: 'Customer',
-        };
-      }
+        // Create customer data for vaulting
+        let customerData = {};
 
-      transactionData.customer = customerData;
+        if (customer) {
+          customerData = {
+            firstName: customer.firstName || 'Customer',
+            lastName: customer.lastName || '',
+            email: customer.email,
+          };
+        } else if (billingAddress) {
+          customerData = {
+            firstName: billingAddress.firstName || 'Customer',
+            lastName: billingAddress.lastName || '',
+          };
+        } else {
+          // Fallback for PayPal or when no billing address
+          customerData = {
+            firstName: 'Bank Account',
+            lastName: 'Customer',
+          };
+        }
+
+        transactionData.customer = customerData;
+      }
+    } else if (customerId) {
+      transactionData.customerId = customerId;
     }
 
     console.log('Transaction data:', JSON.stringify(transactionData, null, 2));
@@ -353,6 +566,13 @@ app.post('/api/sale', async (req, res) => {
           id: result.transaction.id,
           status: result.transaction.status,
           amount: result.transaction.amount,
+          paymentInstrumentType: result.transaction.paymentInstrumentType,
+          customer: result.transaction.customer,
+          creditCard: result.transaction.creditCard,
+          paypalAccount: result.transaction.paypal,
+          venmoAccount: result.transaction.venmoAccount,
+          androidPayCard: result.transaction.androidPayCard,
+          applePayCard: result.transaction.applePayCard,
           // Include PayPal details if available
           paypal: result.transaction.paypal,
           // Include surcharge details if present
@@ -1175,9 +1395,15 @@ app.post('/api/crypto-sale', async (req, res) => {
   }
 });
 
-// Create authorization (without submitting for settlement) - for testing multiple captures
+// Create authorization (without submitting for settlement) - for testing multiple captures / Venmo auth-then-capture
 app.post('/api/authorize', async (req, res) => {
-  const { paymentMethodNonce, amount, merchantAccountId } = req.body;
+  const {
+    paymentMethodNonce,
+    amount,
+    merchantAccountId,
+    deviceData,
+    customer,
+  } = req.body;
 
   if (!paymentMethodNonce) {
     return res.status(400).json({ error: 'Payment method nonce is required' });
@@ -1192,9 +1418,18 @@ app.post('/api/authorize', async (req, res) => {
       amount: parseFloat(amount).toFixed(2),
       paymentMethodNonce: paymentMethodNonce,
       options: {
-        submitForSettlement: false, // This creates an authorization only
+        submitForSettlement: false, // Auth-only; capture later (e.g. F&O invoicing)
       },
     };
+
+    // Device data reduces decline rates — pass as close to sale as possible
+    if (deviceData) {
+      transactionData.deviceData = deviceData;
+    }
+
+    if (customer) {
+      transactionData.customer = customer;
+    }
 
     // Add merchant account ID if provided
     if (merchantAccountId) {
@@ -1225,10 +1460,13 @@ app.post('/api/authorize', async (req, res) => {
           id: result.transaction.id,
           status: result.transaction.status,
           amount: result.transaction.amount,
+          currencyIsoCode: result.transaction.currencyIsoCode,
           type: result.transaction.type,
           paymentInstrumentType: result.transaction.paymentInstrumentType,
           createdAt: result.transaction.createdAt,
           paypal: result.transaction.paypal,
+          venmoAccount: result.transaction.venmoAccount,
+          customer: result.transaction.customer,
         },
       });
     } else {
