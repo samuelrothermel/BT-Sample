@@ -19,6 +19,7 @@ A comprehensive Express.js application demonstrating multiple Braintree payment 
 - Venmo (Mobile & Desktop with QR codes)
 - Dedicated Venmo Sandbox testing page (enablement, auth-only, compliance summaries)
 - Returning Payer + Pay Later Drop-in (guest/returning, vault all methods)
+- Returning Payer + Pay Later Buttons (standalone PAYLATER via Braintree PayPal Checkout)
 - Google Pay
 - Apple Pay
 - ACH Bank Transfers
@@ -82,6 +83,7 @@ npm start
    - **ACH Only**: Dedicated bank account payment testing
    - **Venmo Sandbox**: US/USD Venmo with sandbox enablement, auth-only capture flow, and compliance order summaries
    - **Returning Payer + Pay Later**: Guest/returning Drop-in with Pay Later and vault-all payment methods
+   - **Returning Payer + Pay Later Buttons**: Same flow with Braintree PayPal Buttons (real Pay Later button)
    - **Hosted Fields Vaulted**: Payment vaulting with all payment methods
    - **Vaulted Token Sale**: Process new transactions with previously saved tokens (great for testing ACH recurring payments!)
    - **Drop-in UI**: Pre-built payment interface

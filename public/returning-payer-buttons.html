@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Returning Payer + Pay Later Buttons – Braintree</title>
+    <link rel="stylesheet" href="returning-payer.css">
+    <link rel="stylesheet" href="returning-payer-buttons.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Returning Payer (PayPal Buttons)</h1>
+            <p>Guest &amp; returning · real Pay Later button · vault all methods</p>
+            <a href="index.html" class="back-link">← Back to Samples</a>
+        </header>
+
+        <main>
+            <section class="info-panel">
+                <details open>
+                    <summary>What this page tests</summary>
+                    <div class="info-content">
+                        <ul>
+                            <li><strong>Guest / Returning:</strong> same customer ensure flow as the Drop-in page (email or Customer ID).</li>
+                            <li><strong>Pay Later:</strong> standalone Braintree PayPal Button with <code>fundingSource: PAYLATER</code> (not Drop-in’s “PayPal Credit” label).</li>
+                            <li><strong>PayPal:</strong> Checkout with Vault (<code>requestBillingAgreement</code>) so the account is vaulted.</li>
+                            <li><strong>Also vaults:</strong> cards (Hosted Fields), Venmo, and charges saved vault tokens for returning payers.</li>
+                        </ul>
+                        <p class="note">Use $30+ for Pay Later eligibility. Pair with the Drop-in page to compare Credit vs Pay Later branding.</p>
+                    </div>
+                </details>
+            </section>
+
+            <section class="step-panel" id="step-identity">
+                <h2>1. Payer type</h2>
+                <div class="mode-toggle" role="group" aria-label="Payer type">
+                    <button type="button" class="mode-btn active" data-mode="guest" id="mode-guest">Guest</button>
+                    <button type="button" class="mode-btn" data-mode="returning" id="mode-returning">Returning</button>
+                </div>
+
+                <div id="guest-fields" class="identity-fields">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="guest-email">Email *</label>
+                            <input type="email" id="guest-email" placeholder="guest@example.com" value="guest@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="guest-first-name">First name</label>
+                            <input type="text" id="guest-first-name" value="Alex" placeholder="Alex">
+                        </div>
+                        <div class="form-group">
+                            <label for="guest-last-name">Last name</label>
+                            <input type="text" id="guest-last-name" value="Guest" placeholder="Guest">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="returning-fields" class="identity-fields" hidden>
+                    <div class="form-group">
+                        <label for="returning-customer-id">Customer ID</label>
+                        <input type="text" id="returning-customer-id" placeholder="Paste Customer ID from a prior vaulted sale" autocomplete="off">
+                    </div>
+                    <div class="or-divider"><span>or</span></div>
+                    <div class="form-group">
+                        <label for="returning-email">Email</label>
+                        <input type="email" id="returning-email" placeholder="returning@example.com">
+                    </div>
+                </div>
+
+                <button type="button" id="continue-btn" class="btn-primary">Continue to payment</button>
+                <div id="identity-status" class="status-line" aria-live="polite"></div>
+            </section>
+
+            <section class="step-panel" id="step-checkout" hidden>
+                <h2>2. Payment</h2>
+
+                <div class="customer-banner" id="customer-banner">
+                    <div>
+                        <span class="badge" id="payer-badge">Guest</span>
+                        <strong id="customer-label">—</strong>
+                    </div>
+                    <div class="customer-id-row">
+                        <span>Customer ID:</span>
+                        <code id="active-customer-id">—</code>
+                        <button type="button" id="copy-customer-id" class="btn-secondary btn-small">Copy</button>
+                    </div>
+                    <div id="vaulted-methods" class="vaulted-methods" hidden>
+                        <h3>Pay with a saved method</h3>
+                        <div id="vaulted-methods-list" class="vaulted-actions"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="amount">Amount ($)</label>
+                    <input type="number" id="amount" min="0.01" step="0.01" value="30.00" required>
+                    <small>Pay Later typically needs $30+. Amount is passed into the PayPal SDK for eligibility/messaging.</small>
+                </div>
+
+                <div id="pay-later-message" class="pay-later-message"
+                     data-pp-message
+                     data-pp-layout="text"
+                     data-pp-text-color="black"
+                     data-pp-logo-type="inline"
+                     data-pp-amount="30.00">
+                </div>
+
+                <div class="payment-block">
+                    <h3>PayPal</h3>
+                    <div id="paypal-button" class="button-slot"></div>
+                </div>
+
+                <div class="payment-block">
+                    <h3>Pay Later</h3>
+                    <div id="paylater-button" class="button-slot"></div>
+                    <p id="paylater-ineligible" class="hint" hidden>Pay Later is not eligible for this amount/buyer/sandbox config.</p>
+                </div>
+
+                <div class="payment-block">
+                    <h3>Venmo</h3>
+                    <div id="venmo-button" class="button-slot"></div>
+                    <p id="venmo-unsupported" class="hint" hidden>Venmo is not supported in this browser.</p>
+                </div>
+
+                <div class="payment-block">
+                    <h3>Card (Hosted Fields)</h3>
+                    <form id="card-form">
+                        <div class="form-group">
+                            <label for="card-number">Card number</label>
+                            <div id="card-number" class="hosted-field"></div>
+                        </div>
+                        <div class="form-row card-row">
+                            <div class="form-group">
+                                <label for="expiration-date">Expiration</label>
+                                <div id="expiration-date" class="hosted-field"></div>
+                            </div>
+                            <div class="form-group">
+                                <label for="cvv">CVV</label>
+                                <div id="cvv" class="hosted-field"></div>
+                            </div>
+                        </div>
+                        <button type="submit" id="card-submit" class="btn-primary" disabled>
+                            Pay &amp; vault card
+                        </button>
+                    </form>
+                </div>
+
+                <button type="button" id="reset-btn" class="btn-secondary btn-block">Start over</button>
+            </section>
+
+            <div id="result" class="result" hidden></div>
+        </main>
+    </div>
+
+    <script src="https://js.braintreegateway.com/web/3.111.0/js/client.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.111.0/js/hosted-fields.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.111.0/js/paypal-checkout.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.111.0/js/venmo.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.111.0/js/data-collector.min.js"></script>
+    <script src="returning-payer-buttons.js"></script>
+</body>
+</html>
