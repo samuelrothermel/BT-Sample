@@ -167,6 +167,32 @@ function renderCustomerBanner(customer, mode) {
   }
 }
 
+async function resetPayPalSdk() {
+  if (paypalCheckoutInstance && typeof paypalCheckoutInstance.teardown === 'function') {
+    try {
+      await paypalCheckoutInstance.teardown();
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  paypalCheckoutInstance = null;
+
+  // loadPayPalSDK only injects once; clear it so returning-customer
+  // user-id-token / enable-funding options actually apply on re-init.
+  document
+    .querySelectorAll(
+      'script[src*="paypal.com/sdk/js"], script[src*="paypalObjects"]',
+    )
+    .forEach((script) => script.remove());
+  if (window.paypal) {
+    try {
+      delete window.paypal;
+    } catch (e) {
+      window.paypal = undefined;
+    }
+  }
+}
+
 async function teardownPaymentUi() {
   if (hostedFieldsInstance) {
     try {
@@ -184,7 +210,7 @@ async function teardownPaymentUi() {
     }
     venmoInstance = null;
   }
-  paypalCheckoutInstance = null;
+  await resetPayPalSdk();
   clientInstance = null;
   dataCollectorInstance = null;
   els.paypalButton.innerHTML = '';
@@ -350,12 +376,15 @@ function buildCreatePayment(options = {}) {
 async function initializePayPalButtons() {
   const amount = currentAmount();
   els.payLaterMessage.setAttribute('data-pp-amount', amount);
+  els.paypalButton.innerHTML = '';
+  els.paylaterButton.innerHTML = '';
+  els.paylaterIneligible.hidden = true;
 
-  // Returning customers with a vaulted PayPal BA: autoSetDataUserIdToken
-  // supports Pay Later alongside the returning wallet experience.
+  // Always on: checkout uses a customer-scoped client token. Required so
+  // returning payers with a vaulted PayPal BA can still see Pay Later.
   paypalCheckoutInstance = await braintree.paypalCheckout.create({
     client: clientInstance,
-    autoSetDataUserIdToken: hasVaultedPayPal,
+    autoSetDataUserIdToken: true,
   });
 
   await paypalCheckoutInstance.loadPayPalSDK({
@@ -369,48 +398,24 @@ async function initializePayPalButtons() {
     },
   });
 
-  // PayPal Wallet — Checkout with Vault for guests / new vaulting
-  const paypalBtn = paypal.Buttons({
-    fundingSource: paypal.FUNDING.PAYPAL,
-    style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' },
-    createOrder: buildCreatePayment({
-      requestBillingAgreement: true,
-      billingAgreementDetails: {
-        description: 'Save PayPal for future purchases',
-      },
-    }),
+  const sharedHandlers = {
     onApprove: async (data) => {
       const payload = await paypalCheckoutInstance.tokenizePayment(data);
       await processSale({ paymentMethodNonce: payload.nonce });
     },
-    onCancel: () => showResult('PayPal cancelled.', 'info'),
+    onCancel: () => showResult('PayPal checkout cancelled.', 'info'),
     onError: (err) => {
       console.error(err);
       showResult(err.message || 'PayPal error', 'error');
     },
-  });
+  };
 
-  if (paypalBtn.isEligible()) {
-    await paypalBtn.render('#paypal-button');
-  } else {
-    els.paypalButton.innerHTML =
-      '<p class="hint">PayPal button not eligible in this environment.</p>';
-  }
-
-  // True Pay Later button (not Drop-in PayPal Credit)
+  // Pay Later first — standalone one-time checkout (never requestBillingAgreement)
   const payLaterBtn = paypal.Buttons({
     fundingSource: paypal.FUNDING.PAYLATER,
     style: { layout: 'vertical', color: 'gold', shape: 'rect' },
     createOrder: buildCreatePayment(),
-    onApprove: async (data) => {
-      const payload = await paypalCheckoutInstance.tokenizePayment(data);
-      await processSale({ paymentMethodNonce: payload.nonce });
-    },
-    onCancel: () => showResult('Pay Later cancelled.', 'info'),
-    onError: (err) => {
-      console.error(err);
-      showResult(err.message || 'Pay Later error', 'error');
-    },
+    ...sharedHandlers,
   });
 
   if (payLaterBtn.isEligible()) {
@@ -418,6 +423,37 @@ async function initializePayPalButtons() {
     await payLaterBtn.render('#paylater-button');
   } else {
     els.paylaterIneligible.hidden = false;
+    console.warn('Pay Later isEligible() returned false', {
+      amount,
+      hasVaultedPayPal,
+      customerId: activeCustomer?.id,
+    });
+  }
+
+  // PayPal Wallet:
+  // - No vaulted BA yet → Checkout with Vault (requestBillingAgreement)
+  // - Already vaulted → one-time checkout (required for Pay Later + returning BA)
+  const paypalCreateOptions = hasVaultedPayPal
+    ? {}
+    : {
+        requestBillingAgreement: true,
+        billingAgreementDetails: {
+          description: 'Save PayPal for future purchases',
+        },
+      };
+
+  const paypalBtn = paypal.Buttons({
+    fundingSource: paypal.FUNDING.PAYPAL,
+    style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' },
+    createOrder: buildCreatePayment(paypalCreateOptions),
+    ...sharedHandlers,
+  });
+
+  if (paypalBtn.isEligible()) {
+    await paypalBtn.render('#paypal-button');
+  } else {
+    els.paypalButton.innerHTML =
+      '<p class="hint">PayPal button not eligible in this environment.</p>';
   }
 }
 
@@ -517,10 +553,8 @@ els.amount.addEventListener('change', async () => {
   if (!clientInstance || !activeCustomer) return;
   const amount = currentAmount();
   els.payLaterMessage.setAttribute('data-pp-amount', amount);
-  // Re-init PayPal/Pay Later so SDK amount + eligibility refresh
-  els.paypalButton.innerHTML = '';
-  els.paylaterButton.innerHTML = '';
   try {
+    await resetPayPalSdk();
     await initializePayPalButtons();
   } catch (error) {
     console.warn('Could not refresh PayPal buttons:', error);
